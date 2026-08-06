@@ -1,0 +1,21 @@
+{
+  "source": "supplied brand artwork (Strong Wash)",
+  "palette": [
+    "#010101",
+    "#fec303",
+    "#e8e8e8",
+    "#fefee6",
+    "#f5c516",
+    "#151515"
+  ],
+  "mark": {
+    "width": 512,
+    "height": 175,
+    "aspect": 2.9257
+  },
+  "lockup": {
+    "width": 1024,
+    "height": 413,
+    "aspect": 2.4794
+  }
+}
