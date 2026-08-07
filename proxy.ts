@@ -20,15 +20,37 @@ function isProtected(pathname: string): boolean {
 }
 
 /**
- * Locale routing first, then a cheap session gate.
+ * Locale routing, plus a cheap session gate.
  *
- * This is a redirect for unauthenticated *navigation* — it is not authorisation.
- * It verifies the cookie's signature but cannot know whether the account still
- * exists or is still an admin, so every protected page and `/api` handler
- * re-checks server-side. See `lib/auth/guard.ts`.
+ * None of this is authorisation. It verifies the cookie's signature but cannot
+ * know whether the account still exists or is still an admin — those claims were
+ * true when the token was issued. Every protected page and `/api/admin` handler
+ * re-reads the user from the database; see `lib/auth/guard.ts`.
  */
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+
+  /**
+   * `/admin` is deliberately unlocalised (plan.md: English UI for operators), so
+   * it must bypass the intl middleware entirely — otherwise next-intl rewrites it
+   * to `/ka/admin` and the route 404s.
+   */
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const token = request.cookies.get(SESSION_COOKIE)?.value;
+    const session = token ? await verifySession(token) : null;
+
+    if (!session) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${routing.defaultLocale}/sign-in`;
+      url.search = `?next=${encodeURIComponent(pathname + search)}`;
+      return NextResponse.redirect(url);
+    }
+
+    // A signed-in non-admin is let through to the layout, which does the real
+    // check against the database and answers 404. Deciding it here on the
+    // cookie's role claim would trust a value that may be stale.
+    return NextResponse.next();
+  }
 
   if (isProtected(pathname)) {
     const token = request.cookies.get(SESSION_COOKIE)?.value;

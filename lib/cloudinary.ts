@@ -133,6 +133,40 @@ export async function uploadAttachment(
  * and a botched cleanup must not replace the original error with a confusing
  * one. Worst case a file is stored that nothing references.
  */
+/** Folder for admin-managed library files, kept apart from enquiry attachments. */
+export const MEDIA_FOLDER = "strongwash/media";
+
+/**
+ * Renames the stored object so the delivery URL matches the new title.
+ *
+ * Cloudinary's public id *is* the path in the URL, so a rename changes the URL —
+ * hence the caller must persist the returned values, not just the title. Also
+ * needs the concrete resource type, like delete does.
+ */
+export async function renameAsset(
+  fromPublicId: string,
+  toPublicId: string,
+  resourceType: string,
+): Promise<{ publicId: string; url: string } | null> {
+  configure();
+  try {
+    const result = await cloudinary.uploader.rename(fromPublicId, toPublicId, {
+      resource_type: resourceType,
+      overwrite: false,
+      invalidate: true,
+    });
+    return {
+      publicId: String(result.public_id ?? toPublicId),
+      url: String(result.secure_url ?? result.url ?? ""),
+    };
+  } catch (error) {
+    const status = Number((error as { http_code?: number }).http_code ?? 0);
+    // A clash or a missing source is the caller's problem, not a service fault.
+    if (status >= 400 && status < 500) return null;
+    throw error;
+  }
+}
+
 export async function deleteAttachments(
   files: { publicId: string; resourceType: string }[],
 ): Promise<void> {

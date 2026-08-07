@@ -1,7 +1,9 @@
+import { notFound, redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 
 import { connectToDatabase } from "../db";
 import { User, type UserDocument } from "../models/user";
+import { DEFAULT_LOCALE } from "../types";
 import { getSession } from "./session";
 
 /**
@@ -63,4 +65,25 @@ export async function requireAdmin(): Promise<
     return { response: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
   }
   return result;
+}
+
+/**
+ * Page-level admin guard.
+ *
+ * Reads the role from the database rather than the session cookie: the cookie's
+ * claim was true when it was issued, and demoting someone must take effect
+ * without waiting for their cookie to expire.
+ *
+ * Answers 404 rather than 403 for a signed-in non-admin — there is no reason to
+ * confirm to a customer that an admin panel exists at this path.
+ */
+export async function requireAdminPage(): Promise<AuthedUser> {
+  const session = await getSession();
+  if (!session) redirect(`/${DEFAULT_LOCALE}/sign-in?next=${encodeURIComponent("/admin")}`);
+
+  await connectToDatabase();
+  const user = await User.findById(session.userId);
+  if (!user || user.role !== "admin") notFound();
+
+  return user as AuthedUser;
 }
