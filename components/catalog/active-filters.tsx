@@ -26,6 +26,12 @@ export function ActiveFilters({
   locale: Locale;
 }) {
   const t = useTranslations("catalog");
+  // "clear" and "clearAll" are shared chrome, so they live in `common` rather
+  // than being duplicated into every namespace that needs a dismiss control.
+  // Reading them off `t` resolved to catalog.clear / catalog.clearAll, which do
+  // not exist — next-intl then renders the key itself, so the button read
+  // "catalog.clearAll" in all three locales.
+  const tCommon = useTranslations("common");
   const router = useRouter();
 
   if (!hasActiveFilters(query)) return null;
@@ -105,7 +111,7 @@ export function ActiveFilters({
         >
           {chip.label}
           <X aria-hidden className="size-3.5 opacity-60" />
-          <span className="sr-only">{t("clear")}</span>
+          <span className="sr-only">{tCommon("clear")}</span>
         </button>
       ))}
 
@@ -114,7 +120,7 @@ export function ActiveFilters({
         onClick={() => router.push(queryToHref(basePath, mutate.clearFilters(query)))}
         className="text-primary h-7 text-xs font-semibold hover:underline"
       >
-        {t("clearAll")}
+        {tCommon("clearAll")}
       </button>
     </div>
   );
