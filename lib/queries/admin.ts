@@ -1,10 +1,14 @@
 import { Types } from "mongoose";
 
 import { connectToDatabase } from "../db";
+import { Brand } from "../models/brand";
+import { Category } from "../models/category";
 import { MediaAsset } from "../models/media-asset";
 import { Product } from "../models/product";
 import { QuoteRequest } from "../models/quote-request";
 import { User } from "../models/user";
+import type { LocalizedString, SpecDefinition } from "../types";
+import { getAllCategories, getEffectiveSpecSchema } from "./categories";
 
 export type AdminCounts = {
   users: number;
@@ -148,6 +152,194 @@ export async function listMedia(search?: string): Promise<MediaRow[]> {
     isImage: IMAGE_FORMATS.has(doc.format.toLowerCase()),
     createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
   }));
+}
+
+export type AdminProductRow = {
+  id: string;
+  sku: string;
+  slug: string;
+  name: LocalizedString;
+  brandName: string;
+  categoryName: LocalizedString;
+  price: number;
+  salePrice: number | null;
+  stock: number;
+  stockStatus: string;
+  isActive: boolean;
+  isFeatured: boolean;
+  images: number;
+  /** Locales whose name or descriptions are still blank. */
+  missingLocales: string[];
+  quoteCount: number;
+};
+
+/**
+ * Products for the admin table, including inactive ones — the storefront hides
+ * those, which is exactly why the panel must show them.
+ */
+export async function listAdminProducts(search?: string): Promise<AdminProductRow[]> {
+  await connectToDatabase();
+
+  const filter: Record<string, unknown> = {};
+  const term = search?.trim();
+  if (term) {
+    const rx = { $regex: term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+    filter.$or = [{ sku: rx }, { slug: rx }, { "name.ka": rx }, { "name.en": rx }, { "name.ru": rx }];
+  }
+
+  const [docs, brands, categories, quoteCounts] = await Promise.all([
+    Product.find(filter).sort({ updatedAt: -1 }).limit(300).lean(),
+    Brand.find({}).select("name").lean(),
+    Category.find({}).select("name").lean(),
+    QuoteRequest.aggregate<{ _id: Types.ObjectId; n: number }>([
+      { $group: { _id: "$product", n: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const brandName = new Map(brands.map((b) => [String(b._id), b.name]));
+  const categoryName = new Map(categories.map((c) => [String(c._id), c.name]));
+  const quotesByProduct = new Map(quoteCounts.map((r) => [String(r._id), r.n]));
+
+  return docs.map((doc) => {
+    // Flagged rather than blocked: a product may legitimately ship before its
+    // translations are done, but the operator should be able to see which.
+    const missingLocales = (["en", "ru"] as const).filter(
+      (locale) => !doc.name?.[locale] || !doc.shortDescription?.[locale],
+    );
+
+    return {
+      id: String(doc._id),
+      sku: doc.sku,
+      slug: doc.slug,
+      name: {
+        ka: doc.name?.ka ?? "",
+        en: doc.name?.en ?? undefined,
+        ru: doc.name?.ru ?? undefined,
+      },
+      brandName: brandName.get(String(doc.brand)) ?? "—",
+      categoryName: {
+        ka: categoryName.get(String(doc.category))?.ka ?? "—",
+        en: categoryName.get(String(doc.category))?.en ?? undefined,
+        ru: categoryName.get(String(doc.category))?.ru ?? undefined,
+      },
+      price: doc.price,
+      salePrice: doc.salePrice ?? null,
+      stock: doc.stock ?? 0,
+      stockStatus: doc.stockStatus ?? "out",
+      isActive: doc.isActive ?? true,
+      isFeatured: doc.isFeatured ?? false,
+      images: doc.images?.length ?? 0,
+      missingLocales,
+      quoteCount: quotesByProduct.get(String(doc._id)) ?? 0,
+    };
+  });
+}
+
+export type AdminProductDetail = {
+  id: string;
+  sku: string;
+  slug: string;
+  name: LocalizedString;
+  shortDescription: LocalizedString;
+  description: LocalizedString;
+  brandId: string;
+  categoryId: string;
+  price: number;
+  salePrice: number | null;
+  stock: number;
+  stockStatus: string;
+  isActive: boolean;
+  isFeatured: boolean;
+  images: { url: string; alt: LocalizedString }[];
+  specs: Record<string, string | number | boolean>;
+};
+
+export async function getAdminProduct(id: string): Promise<AdminProductDetail | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  await connectToDatabase();
+
+  const doc = await Product.findById(id).lean();
+  if (!doc) return null;
+
+  const specs: Record<string, string | number | boolean> = {};
+  for (const spec of doc.specs ?? []) {
+    if (spec.valueNumber !== undefined && spec.valueNumber !== null) specs[spec.key] = spec.valueNumber;
+    else if (spec.valueString) specs[spec.key] = spec.valueString;
+    else if (spec.valueBool !== undefined && spec.valueBool !== null) specs[spec.key] = spec.valueBool;
+  }
+
+  const localized = (value: { ka?: string | null; en?: string | null; ru?: string | null } | null | undefined) => ({
+    ka: value?.ka ?? "",
+    en: value?.en ?? undefined,
+    ru: value?.ru ?? undefined,
+  });
+
+  return {
+    id: String(doc._id),
+    sku: doc.sku,
+    slug: doc.slug,
+    name: localized(doc.name),
+    shortDescription: localized(doc.shortDescription),
+    description: localized(doc.description),
+    brandId: String(doc.brand),
+    categoryId: String(doc.category),
+    price: doc.price,
+    salePrice: doc.salePrice ?? null,
+    stock: doc.stock ?? 0,
+    stockStatus: doc.stockStatus ?? "out",
+    isActive: doc.isActive ?? true,
+    isFeatured: doc.isFeatured ?? false,
+    images: (doc.images ?? []).map((image) => ({ url: image.url, alt: localized(image.alt) })),
+    specs,
+  };
+}
+
+export type ProductFormOptions = {
+  brands: { id: string; name: string }[];
+  /** Leaf-first list with the full path, so the picker is unambiguous. */
+  categories: { id: string; label: string; specSchema: SpecDefinition[] }[];
+  media: { id: string; url: string; title: string; isImage: boolean }[];
+};
+
+/**
+ * Everything the form needs to render its selects, in one read.
+ *
+ * The effective spec schema travels with each category so changing the category
+ * re-renders the spec inputs without another round trip.
+ */
+export async function getProductFormOptions(): Promise<ProductFormOptions> {
+  await connectToDatabase();
+
+  const [brands, categories, media] = await Promise.all([
+    Brand.find({}).sort({ order: 1 }).select("name").lean(),
+    getAllCategories(),
+    MediaAsset.find({}).sort({ createdAt: -1 }).limit(200).lean(),
+  ]);
+
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  const pathLabel = (category: (typeof categories)[number]) =>
+    [...category.ancestors.map((id) => byId.get(id)?.name.en ?? byId.get(id)?.name.ka ?? "?"), category.name.en ?? category.name.ka]
+      .filter(Boolean)
+      .join(" › ");
+
+  const withSchema = await Promise.all(
+    categories.map(async (category) => ({
+      id: category.id,
+      label: pathLabel(category),
+      specSchema: await getEffectiveSpecSchema(category),
+    })),
+  );
+
+  return {
+    brands: brands.map((b) => ({ id: String(b._id), name: b.name })),
+    categories: withSchema.sort((a, b) => a.label.localeCompare(b.label)),
+    media: media.map((m) => ({
+      id: String(m._id),
+      url: m.url,
+      title: m.title,
+      isImage: IMAGE_FORMATS.has(m.format.toLowerCase()),
+    })),
+  };
 }
 
 export type AttachmentRow = {

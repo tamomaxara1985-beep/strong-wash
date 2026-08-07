@@ -1,4 +1,4 @@
-import { FileImage, LayoutDashboard, Paperclip, Users } from "lucide-react";
+import { FileImage, LayoutDashboard, Package, Paperclip, Users } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -22,6 +22,7 @@ export const metadata: Metadata = {
  */
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/media", label: "Media library", icon: FileImage },
   { href: "/admin/attachments", label: "Quote attachments", icon: Paperclip },
   { href: "/admin/users", label: "Users", icon: Users },
