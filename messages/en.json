@@ -143,7 +143,13 @@
     "databaseUnavailable": "The database is unavailable. Contact the administrator.",
     "nameTooShort": "Enter your full name.",
     "emailInvalid": "Enter a valid email address.",
-    "passwordTooShort": "Password must be at least 10 characters."
+    "passwordTooShort": "Password must be at least 10 characters.",
+    "continueWithGoogle": "Continue with Google",
+    "or": "or",
+    "googleFailed": "Google sign-in did not complete. Please try again.",
+    "googleCancelled": "Google sign-in was cancelled.",
+    "googleUnavailable": "Google sign-in is temporarily unavailable.",
+    "googleEmailUnverified": "That Google address is not verified. Verify it with Google, or sign in with a password."
   },
   "account": {
     "title": "My account",

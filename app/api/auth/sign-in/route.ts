@@ -62,6 +62,20 @@ export async function POST(request: NextRequest) {
       return invalidCredentials();
     }
 
+    /**
+     * A Google-only account has no hash to compare against.
+     *
+     * Answered with the same generic error and the same spent time as a wrong
+     * password: saying "this account uses Google" would confirm the address
+     * exists and reveal how it authenticates, which is exactly what the generic
+     * message exists to prevent. The sign-in page already offers the Google
+     * button beside the form, so the way forward is visible without being told.
+     */
+    if (!user.passwordHash) {
+      await fakeVerify();
+      return invalidCredentials();
+    }
+
     const ok = await verifyPassword(password, user.passwordHash);
     if (!ok) return invalidCredentials();
 

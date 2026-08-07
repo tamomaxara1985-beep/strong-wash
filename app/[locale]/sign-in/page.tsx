@@ -2,8 +2,11 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
+import { AuthDivider } from "@/components/auth/auth-divider";
 import { AuthForm } from "@/components/auth/auth-form";
+import { GoogleButton } from "@/components/auth/google-button";
 import { Link } from "@/i18n/navigation";
+import { googleErrorMessage } from "@/lib/auth/google-errors";
 import { getSession } from "@/lib/auth/session";
 
 export async function generateMetadata({
@@ -41,13 +44,16 @@ export default async function SignInPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { next } = await searchParams;
+  const { next, error } = await searchParams;
   const redirectTo = safeNext(typeof next === "string" ? next : undefined);
 
   // Already signed in: sending them to the form again is a dead end.
   if (await getSession()) redirect(`/${locale}${redirectTo}`);
 
   const t = await getTranslations("auth");
+  // The OAuth routes redirect back here with a code rather than a JSON body,
+  // because the user arrives by browser navigation.
+  const oauthError = typeof error === "string" ? googleErrorMessage(error, t) : null;
 
   return (
     <div className="container-page py-12">
@@ -55,7 +61,18 @@ export default async function SignInPage({
         <h1 className="text-display text-2xl">{t("signInTitle")}</h1>
         <p className="text-muted-foreground mt-2 text-sm">{t("signInSubtitle")}</p>
 
-        <div className="bg-card mt-6 rounded-lg border p-6">
+        <div className="bg-card mt-6 flex flex-col gap-5 rounded-lg border p-6">
+          {oauthError ? (
+            <p
+              role="alert"
+              className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
+            >
+              {oauthError}
+            </p>
+          ) : null}
+
+          <GoogleButton next={next && typeof next === "string" ? next : undefined} />
+          <AuthDivider />
           <AuthForm mode="sign-in" redirectTo={redirectTo} />
         </div>
 

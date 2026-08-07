@@ -143,7 +143,13 @@
     "databaseUnavailable": "База данных недоступна. Обратитесь к администратору.",
     "nameTooShort": "Укажите имя и фамилию.",
     "emailInvalid": "Укажите корректный адрес эл. почты.",
-    "passwordTooShort": "Пароль должен содержать не менее 10 символов."
+    "passwordTooShort": "Пароль должен содержать не менее 10 символов.",
+    "continueWithGoogle": "Продолжить с Google",
+    "or": "или",
+    "googleFailed": "Вход через Google не завершён. Попробуйте снова.",
+    "googleCancelled": "Вход через Google отменён.",
+    "googleUnavailable": "Вход через Google временно недоступен.",
+    "googleEmailUnverified": "Этот адрес Google не подтверждён. Подтвердите его в Google или войдите по паролю."
   },
   "account": {
     "title": "Мой кабинет",

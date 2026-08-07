@@ -143,7 +143,13 @@
     "databaseUnavailable": "მონაცემთა ბაზა მიუწვდომელია. მიმართეთ ადმინისტრატორს.",
     "nameTooShort": "მიუთითეთ სახელი და გვარი.",
     "emailInvalid": "მიუთითეთ სწორი ელ. ფოსტა.",
-    "passwordTooShort": "პაროლი უნდა იყოს მინიმუმ 10 სიმბოლო."
+    "passwordTooShort": "პაროლი უნდა იყოს მინიმუმ 10 სიმბოლო.",
+    "continueWithGoogle": "Google-ით გაგრძელება",
+    "or": "ან",
+    "googleFailed": "Google-ით შესვლა ვერ მოხერხდა. სცადეთ ხელახლა.",
+    "googleCancelled": "Google-ით შესვლა შეწყდა.",
+    "googleUnavailable": "Google-ით შესვლა დროებით მიუწვდომელია.",
+    "googleEmailUnverified": "Google-ის ეს ელ. ფოსტა დადასტურებული არ არის. დაადასტურეთ Google-ში ან შედით პაროლით."
   },
   "account": {
     "title": "ჩემი კაბინეტი",
