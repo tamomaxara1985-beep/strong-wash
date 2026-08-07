@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
+import { ProductRowActions } from "@/components/admin/product-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { listAdminProducts } from "@/lib/queries/admin";
 
@@ -62,6 +63,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps<"/ad
                 <th scope="col" className="px-3 py-2 text-left font-semibold">Availability</th>
                 <th scope="col" className="px-3 py-2 text-left font-semibold">State</th>
                 <th scope="col" className="px-3 py-2 text-right font-semibold">Quotes</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -117,6 +119,13 @@ export default async function AdminProductsPage({ searchParams }: PageProps<"/ad
                     </div>
                   </td>
                   <td className="text-data px-3 py-2 text-right">{product.quoteCount}</td>
+                  <td className="px-3 py-2">
+                    <ProductRowActions
+                      id={product.id}
+                      sku={product.sku}
+                      name={product.name.en ?? product.name.ka}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
