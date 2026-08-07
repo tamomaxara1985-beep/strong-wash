@@ -1,0 +1,14 @@
+# Belt and braces for CLI deploys.
+#
+# `vercel deploy` uploads the working directory. .gitignore already keeps the
+# real secrets out of git, but a deploy is a separate path with its own rules —
+# environment values belong in the project's env store, never in an upload.
+.env
+.env.*
+!.env.example
+
+# Local build and tooling output that the build regenerates anyway.
+.next
+node_modules
+coverage
+*.tsbuildinfo
