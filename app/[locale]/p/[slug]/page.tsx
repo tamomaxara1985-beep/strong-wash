@@ -217,7 +217,12 @@ export default async function ProductPage({ params }: PageProps<"/[locale]/p/[sl
       {/* Tabs */}
       <div className="mt-12">
         <Tabs defaultValue="description">
-          <TabsList>
+          {/* Georgian and Russian tab labels are wider than a 390px viewport, and
+              an `inline-flex w-fit` list neither wraps nor scrolls — the page
+              itself scrolled sideways instead. Scrolling the strip keeps the
+              page fixed; `max-w-full` is what actually lets it shrink inside the
+              flex parent. */}
+          <TabsList className="scroll-x max-w-full justify-start">
             <TabsTrigger value="description">{t("product.description")}</TabsTrigger>
             <TabsTrigger value="specs">{t("product.specifications")}</TabsTrigger>
             <TabsTrigger value="delivery">{t("product.delivery")}</TabsTrigger>
