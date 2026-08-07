@@ -45,13 +45,24 @@ export async function getSavedProductIds(userId: string): Promise<Set<string>> {
   return new Set((user?.savedProducts ?? []).map((id) => id.toString()));
 }
 
+export type QuoteAttachment = {
+  url: string;
+  bytes: number;
+  format: string;
+  originalName: string;
+  isImage: boolean;
+};
+
 export type QuoteRequestSummary = {
   id: string;
   status: "new" | "contacted" | "closed";
   createdAt: string;
   message?: string;
+  attachments: QuoteAttachment[];
   product: { slug: string; name: LocalizedString } | null;
 };
+
+const IMAGE_FORMATS = new Set(["jpg", "jpeg", "png", "webp"]);
 
 /** Quote history for the account page, newest first. */
 export async function getQuoteRequests(userId: string): Promise<QuoteRequestSummary[]> {
@@ -72,6 +83,13 @@ export async function getQuoteRequests(userId: string): Promise<QuoteRequestSumm
       : new Date(String(doc.createdAt))
     ).toISOString(),
     message: doc.message ?? undefined,
+    attachments: (doc.attachments ?? []).map((a) => ({
+      url: a.url,
+      bytes: a.bytes,
+      format: a.format,
+      originalName: a.originalName,
+      isImage: IMAGE_FORMATS.has(a.format.toLowerCase()),
+    })),
     product: doc.product
       ? { slug: doc.product.slug, name: doc.product.name }
       : null,

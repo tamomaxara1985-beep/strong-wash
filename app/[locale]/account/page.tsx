@@ -1,4 +1,4 @@
-import { Mail, Phone, Building2 } from "lucide-react";
+import { Mail, Phone, Building2, FileText } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -10,6 +10,7 @@ import { Link } from "@/i18n/navigation";
 import { getSession } from "@/lib/auth/session";
 import { pickLocale } from "@/lib/localized";
 import { getQuoteRequests, getSavedProducts } from "@/lib/queries/account";
+import { formatBytes } from "@/lib/uploads";
 import type { Locale } from "@/lib/types";
 
 export async function generateMetadata({
@@ -121,6 +122,42 @@ export default async function AccountPage({ params }: PageProps<"/[locale]/accou
                   <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                     {quote.message}
                   </p>
+                ) : null}
+
+                {quote.attachments.length ? (
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {quote.attachments.map((file) => (
+                      <li key={file.url}>
+                        {/* Opens on Cloudinary. `noopener` because these are
+                            third-party URLs, and `download` would need a
+                            same-origin proxy to work cross-domain. */}
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`${file.originalName} · ${formatBytes(file.bytes)}`}
+                          className="hover:border-primary/60 focus-visible:ring-ring flex items-center gap-2 rounded-md border p-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                        >
+                          {file.isImage ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={file.url}
+                              alt={file.originalName}
+                              className="size-12 rounded object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="bg-secondary grid size-12 place-items-center rounded">
+                              <FileText aria-hidden className="text-muted-foreground size-5" />
+                            </span>
+                          )}
+                          <span className="max-w-32 truncate pr-1 text-xs">
+                            {file.originalName}
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 ) : null}
               </li>
             ))}

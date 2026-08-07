@@ -9,6 +9,7 @@ import { SpecStrip } from "@/components/catalog/spec-strip";
 import { StockBadge } from "@/components/catalog/stock-badge";
 import { SectionHeading } from "@/components/layout/section-heading";
 import { ProductGallery } from "@/components/product/product-gallery";
+import { QuoteRequestDialog } from "@/components/product/quote-request-dialog";
 import { SaveProductButton } from "@/components/product/save-product-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "@/i18n/navigation";
@@ -176,14 +177,25 @@ export default async function ProductPage({ params }: PageProps<"/[locale]/p/[sl
 
             <StockBadge status={product.stockStatus} />
 
-            {/* No cart in v1 — the honest CTA is a phone call, and the hint says
-                why rather than pretending checkout exists. */}
+            {/* No cart in v1. The primary action is a quote request, which can
+                carry photos of the site; the phone stays as the immediate
+                alternative for anyone who would rather just call. */}
+            <QuoteRequestDialog
+              productSlug={product.slug}
+              locale={typedLocale}
+              defaults={
+                session ? { name: session.name, email: session.email } : undefined
+              }
+            />
             <a
               href={`tel:${PHONE.replace(/\s/g, "")}`}
-              className="bg-brand-yellow hover:bg-brand-yellow-dark focus-visible:ring-ring inline-flex h-12 items-center justify-center gap-2 rounded-md text-sm font-bold text-black transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              className="hover:bg-secondary focus-visible:ring-ring inline-flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
               <Phone aria-hidden className="size-4" />
-              {t("product.contactCta")}
+              {/* The number itself, not "Request a quote" — that label now
+                  belongs to the dialog above, and two buttons reading the same
+                  thing is a coin toss rather than a choice. */}
+              <span className="text-data">{PHONE}</span>
             </a>
             <SaveProductButton
               productId={product.id}

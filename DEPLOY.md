@@ -32,6 +32,14 @@ Set these in Vercel under Settings → Environment Variables, for Production
 | `MONGODB_URI` | The `mongodb+srv://` string, including `/strongwash` before the `?` |
 | `AUTH_SECRET` | A **new** value, not the one in your local `.env.local` |
 | `NEXT_PUBLIC_SITE_URL` | `https://<your-domain>` — optional; without it the code falls back to Vercel's own project URL |
+| `CLOUDINARY_CLOUD_NAME` | From the Cloudinary dashboard |
+| `CLOUDINARY_API_KEY` | From Cloudinary → Settings → API Keys |
+| `CLOUDINARY_API_SECRET` | Same page. Server-only — never `NEXT_PUBLIC_` |
+
+Without the Cloudinary trio the site runs and quote requests still submit; only
+requests carrying a file fail, with a 503 and `uploads_not_configured`. The form
+translates that into "File upload is temporarily unavailable" rather than a
+generic error.
 
 Generate the production secret:
 
