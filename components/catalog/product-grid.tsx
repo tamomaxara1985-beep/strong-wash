@@ -1,9 +1,15 @@
 import { ProductCard } from "@/components/catalog/product-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getSpecSchemaLookup } from "@/lib/queries/categories";
 import type { Locale, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export function ProductGrid({
+/**
+ * Async so callers do not each have to thread the spec-schema lookup down. The
+ * lookup itself is request-cached, so the extra await costs nothing after the
+ * first grid on the page.
+ */
+export async function ProductGrid({
   products,
   locale,
   className,
@@ -12,6 +18,8 @@ export function ProductGrid({
   locale: Locale;
   className?: string;
 }) {
+  const specSchema = await getSpecSchemaLookup();
+
   return (
     <div
       className={cn(
@@ -24,6 +32,7 @@ export function ProductGrid({
           key={product.id}
           product={product}
           locale={locale}
+          specSchema={specSchema}
           priority={index < 4}
         />
       ))}

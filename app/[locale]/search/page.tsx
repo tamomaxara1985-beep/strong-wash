@@ -39,7 +39,7 @@ export default async function SearchPage({
   // No category scope here, so there is no category spec schema to filter with.
   // Brand, price and availability facets still apply across the whole catalogue.
   const query = parseProductQuery(raw);
-  const result = queryProducts(query, typedLocale);
+  const result = await queryProducts(query, typedLocale);
   const basePath = "/search";
 
   return (

@@ -79,10 +79,19 @@ export type Product = {
   shortDescription: LocalizedString;
   description: LocalizedString;
   brand: string;
+  /**
+   * Denormalised at read time by the brand `$lookup`. Product cards and the
+   * detail header need the brand name, and resolving it per card would be one
+   * query per row.
+   */
+  brandSlug: string;
+  brandName: string;
   category: string;
   categoryAncestors: string[];
   price: number;
   salePrice: number | null;
+  /** `salePrice ?? price`. Stored so price filters and sorts stay indexable. */
+  effectivePrice: number;
   currency: "GEL";
   stock: number;
   stockStatus: StockStatus;
@@ -127,6 +136,16 @@ export type Facets = {
   specs: SpecFacet[];
   inStockCount: number;
 };
+
+/**
+ * Lives here, not in the query layer.
+ *
+ * `search-params.ts` needs it and is imported by client components (the filter
+ * rail, the sort select, the pagination). Importing it from the Mongoose-backed
+ * module pulled the driver into the browser bundle, which fails the build on
+ * `async_hooks`. Shared constants belong in the dependency-free module.
+ */
+export const DEFAULT_PAGE_SIZE = 12;
 
 export const SORT_OPTIONS = [
   "relevance",

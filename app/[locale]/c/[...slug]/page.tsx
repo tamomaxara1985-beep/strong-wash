@@ -12,42 +12,47 @@ import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { pickLocale } from "@/lib/localized";
 import {
-  categories,
+  getAllCategories,
   getCategoryBySlug,
   getCategoryTrail,
   getChildren,
   getEffectiveSpecSchema,
-} from "@/lib/mock/categories";
-import { countProductsInCategory, queryProducts } from "@/lib/queries/products";
+} from "@/lib/queries/categories";
+import { countProductsPerCategory, queryProducts } from "@/lib/queries/products";
 import { parseProductQuery, type RawSearchParams } from "@/lib/queries/search-params";
 import type { Locale } from "@/lib/types";
 
 /**
  * The route is a catch-all so `/c/automatic-systems/rollover-machines` resolves, but
- * only the *last* segment identifies the category — slugs are globally unique,
- * exactly as they are in the Phase 2 collection.
+ * only the *last* segment identifies the category — slugs are unique across the
+ * collection, so the leading segments are decoration for humans and SEO.
  */
-function resolveCategory(slug: string[]) {
+async function resolveCategory(slug: string[]) {
   const leaf = slug[slug.length - 1];
   return leaf ? getCategoryBySlug(leaf) : undefined;
 }
 
-export function generateStaticParams() {
-  return routing.locales.flatMap((locale) =>
-    categories
-      .filter((category) => category.isActive)
-      .map((category) => ({
+export async function generateStaticParams() {
+  // Prerendering is a nice-to-have, not a build gate: with no reachable database
+  // an empty list simply defers every category page to request time.
+  try {
+    const categories = await getAllCategories();
+    return routing.locales.flatMap((locale) =>
+      categories.map((category) => ({
         locale,
         slug: category.path.replace(/^\//, "").split("/"),
       })),
-  );
+    );
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[locale]/c/[...slug]">): Promise<Metadata> {
   const { locale, slug } = await params;
-  const category = resolveCategory(slug);
+  const category = await resolveCategory(slug);
   if (!category) return {};
 
   const name = pickLocale(category.name, locale as Locale);
@@ -74,22 +79,25 @@ export default async function CategoryPage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const category = resolveCategory(slug);
+  const category = await resolveCategory(slug);
   if (!category) notFound();
 
   const raw = (await searchParams) as RawSearchParams;
   const t = await getTranslations();
   const typedLocale = locale as Locale;
 
-  const schema = getEffectiveSpecSchema(category);
+  const schema = await getEffectiveSpecSchema(category);
   const query = parseProductQuery(raw, {
     categorySlug: category.slug,
     schema,
   });
-  const result = queryProducts(query, typedLocale);
 
-  const trail = getCategoryTrail(category);
-  const children = getChildren(category.id);
+  const [result, trail, children, counts] = await Promise.all([
+    queryProducts(query, typedLocale),
+    getCategoryTrail(category),
+    getChildren(category.id),
+    countProductsPerCategory(),
+  ]);
   const basePath = `/c${category.path}`;
 
   return (
@@ -150,7 +158,7 @@ export default async function CategoryPage({
                 >
                   {pickLocale(child.name, typedLocale)}
                   <span className="text-data text-muted-foreground text-xs">
-                    {countProductsInCategory(child.slug)}
+                    {counts.get(child.id) ?? 0}
                   </span>
                 </Link>
               </li>

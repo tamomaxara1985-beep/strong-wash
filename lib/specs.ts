@@ -1,6 +1,15 @@
 import { pickLocale } from "./localized";
-import { getCategoryById, getEffectiveSpecSchema } from "./mock/categories";
 import type { Locale, Product, ProductSpec, SpecDefinition } from "./types";
+
+/**
+ * Resolves a category id to its effective spec schema, synchronously.
+ *
+ * Spec definitions now live in the database, but formatting a product's specs is
+ * pure display logic that runs inside render. Taking a prepared lookup keeps
+ * this module free of I/O: the caller awaits `getSpecSchemaLookup()` once per
+ * request and every card resolves against the same in-memory tree.
+ */
+export type SpecSchemaLookup = (categoryId: string) => SpecDefinition[];
 
 export type ResolvedSpec = {
   key: string;
@@ -41,12 +50,9 @@ export function resolveSpecs(
   product: Product,
   locale: Locale,
   labels: { yes: string; no: string },
+  lookup: SpecSchemaLookup,
 ): ResolvedSpec[] {
-  const category = getCategoryById(product.category);
-  if (!category) return [];
-  const schema = getEffectiveSpecSchema(category);
-
-  return schema
+  return lookup(product.category)
     .map((def): ResolvedSpec | null => {
       const spec = product.specs.find((s) => s.key === def.key);
       if (!spec) return null;
@@ -71,9 +77,10 @@ export function getCardSpecs(
   product: Product,
   locale: Locale,
   labels: { yes: string; no: string },
+  lookup: SpecSchemaLookup,
   limit = 3,
 ): ResolvedSpec[] {
-  return resolveSpecs(product, locale, labels)
+  return resolveSpecs(product, locale, labels, lookup)
     .filter((s) => s.definition.showInCard)
     .slice(0, limit);
 }

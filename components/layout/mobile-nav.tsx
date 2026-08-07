@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Menu, Phone } from "lucide-react";
+import { ChevronRight, Menu, Phone, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -31,9 +31,11 @@ export type NavCategory = {
 export function MobileNav({
   categories,
   phone,
+  signedIn = false,
 }: {
   categories: NavCategory[];
   phone: string;
+  signedIn?: boolean;
 }) {
   const t = useTranslations();
   const [open, setOpen] = useState(false);
@@ -107,6 +109,39 @@ export function MobileNav({
               ),
             )}
           </Accordion>
+
+          {/* The desktop bar's account controls have no room on mobile, so the
+              sheet carries them. */}
+          <div className="flex flex-col gap-1 border-t pt-4">
+            {signedIn ? (
+              <Link
+                href="/account"
+                onClick={close}
+                className="hover:bg-secondary flex items-center gap-2 rounded-sm px-2 py-2 text-sm font-semibold"
+              >
+                <UserRound aria-hidden className="size-4" />
+                {t("auth.account")}
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/sign-in"
+                  onClick={close}
+                  className="hover:bg-secondary flex items-center gap-2 rounded-sm px-2 py-2 text-sm font-semibold"
+                >
+                  <UserRound aria-hidden className="size-4" />
+                  {t("auth.signIn")}
+                </Link>
+                <Link
+                  href="/sign-up"
+                  onClick={close}
+                  className="text-primary hover:bg-secondary flex items-center gap-2 rounded-sm px-2 py-2 text-sm font-semibold"
+                >
+                  {t("auth.signUp")}
+                </Link>
+              </>
+            )}
+          </div>
 
           <div className="flex items-center justify-between border-t pt-4">
             <a

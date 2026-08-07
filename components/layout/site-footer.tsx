@@ -4,14 +4,14 @@ import { getTranslations } from "next-intl/server";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/lib/localized";
-import { getRootCategories } from "@/lib/mock/categories";
+import { getRootCategories } from "@/lib/queries/categories";
 import type { Locale } from "@/lib/types";
 
 const PHONE = "+995 322 40 40 40";
 
 export async function SiteFooter({ locale }: { locale: Locale }) {
   const t = await getTranslations();
-  const roots = getRootCategories();
+  const roots = await getRootCategories();
   const year = 2026;
 
   return (

@@ -1,197 +1,237 @@
-import { getBrandById, getBrandBySlug, brands as allBrands } from "../mock/brands";
+import { Types, type PipelineStage } from "mongoose";
+import { cache } from "react";
+
+import { connectToDatabase } from "../db";
+import { Product as ProductModel } from "../models/product";
 import {
-  getCategoryBySlug,
-  getEffectiveSpecSchema,
-  getSubtreeIds,
-} from "../mock/categories";
-import { products } from "../mock/products";
-import type {
-  BrandFacet,
-  Facets,
-  Product,
-  ProductListResult,
-  ProductQuery,
-  SpecDefinition,
-  SpecFacet,
+  DEFAULT_PAGE_SIZE,
+  type Brand,
+  type BrandFacet,
+  type Facets,
+  type Locale,
+  type Product,
+  type ProductListResult,
+  type ProductQuery,
+  type SpecDefinition,
+  type SpecFacet,
 } from "../types";
+import { getAllBrands } from "./brands";
+import { getCategoryBySlug, getEffectiveSpecSchema, getSubtreeIds } from "./categories";
+import { toProduct } from "./map";
 
-export const DEFAULT_PAGE_SIZE = 12;
+export { DEFAULT_PAGE_SIZE };
 
-function specOf(product: Product, key: string) {
-  return product.specs.find((s) => s.key === key);
+/**
+ * "In stock" means a unit is physically held. Built-to-order systems are neither
+ * in stock nor unavailable — counting `preorder` as in-stock would advertise a
+ * shelf unit for a machine with a ten-week lead time.
+ */
+const HELD_IN_STOCK = ["in_stock", "low"] as const;
+
+type Filter = Record<string, unknown>;
+
+function and(filters: Filter[]): Filter {
+  const used = filters.filter((f) => Object.keys(f).length > 0);
+  if (!used.length) return {};
+  if (used.length === 1) return used[0];
+  return { $and: used };
+}
+
+/** Mongo has no literal escape for `$regex`, so the needle is escaped by hand. */
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function ids(values: string[]): Types.ObjectId[] {
+  return values.filter((v) => Types.ObjectId.isValid(v)).map((v) => new Types.ObjectId(v));
 }
 
 /**
- * Matches one spec constraint against a product.
+ * Builds the filter as separate named dimensions instead of one blob.
  *
- * This is the mock equivalent of a single `$elemMatch`. Filtering on several
- * different spec keys must AND together *separate* element matches — a flat
- * `{'specs.key': k, 'specs.valueNumber': v}` in Mongo would match a product
- * where one element supplies the key and a different element supplies the
- * value, which is a false positive. Keeping one predicate per key here mirrors
- * the shape Phase 2 has to produce.
+ * Facet counts must exclude their own dimension: a brand facet computed under a
+ * filter that already includes the brand selection reports 0 for every
+ * unselected brand, so nothing else is clickable and the user is stuck. Keeping
+ * the dimensions addressable is what makes "everything except this one" cheap.
  */
-function matchesSpec(
-  product: Product,
-  key: string,
-  constraint: { values?: string[]; min?: number; max?: number; bool?: boolean },
-): boolean {
-  const spec = specOf(product, key);
-  if (!spec) return false;
-
-  if (constraint.values?.length) {
-    return spec.valueString != null && constraint.values.includes(spec.valueString);
-  }
-  if (constraint.bool !== undefined) {
-    return spec.valueBool === constraint.bool;
-  }
-  if (constraint.min !== undefined || constraint.max !== undefined) {
-    if (spec.valueNumber == null) return false;
-    if (constraint.min !== undefined && spec.valueNumber < constraint.min) return false;
-    if (constraint.max !== undefined && spec.valueNumber > constraint.max) return false;
-  }
-  return true;
-}
-
-type Predicate = (product: Product) => boolean;
-
-/**
- * "In stock" means a unit is physically held. Built-to-order systems are
- * neither in stock nor unavailable — treating `preorder` as in-stock would
- * report a shelf count for a machine with a ten-week lead time.
- */
-function isHeldInStock(product: Product): boolean {
-  return product.stockStatus === "in_stock" || product.stockStatus === "low";
-}
-
-/**
- * Builds the predicate set as separate named dimensions so a facet can be
- * counted with its *own* dimension excluded. Counting every facet under the
- * full filter would report 0 for each unselected brand, making them
- * unclickable — the classic faceted-search dead end.
- */
-function buildPredicates(query: ProductQuery) {
-  const base: Predicate[] = [(p) => p.isActive];
+async function buildFilters(query: ProductQuery, brands: Brand[]) {
+  const base: Filter[] = [{ isActive: true }];
+  let unsatisfiable = false;
 
   if (query.categorySlug) {
-    const category = getCategoryBySlug(query.categorySlug);
+    const category = await getCategoryBySlug(query.categorySlug);
     if (!category) {
-      return { base: [() => false] as Predicate[], dimensions: {} as Record<string, Predicate> };
-    }
-    const subtree = new Set(getSubtreeIds(category.id));
-    base.push((p) => p.categoryAncestors.some((id) => subtree.has(id)));
-  }
-
-  if (query.q) {
-    const needle = query.q.trim().toLowerCase();
-    if (needle) {
-      base.push((p) => {
-        const brand = getBrandById(p.brand);
-        const haystack = [
-          p.sku,
-          p.slug,
-          p.name.ka,
-          p.name.en ?? "",
-          p.name.ru ?? "",
-          p.shortDescription.ka,
-          p.shortDescription.en ?? "",
-          p.shortDescription.ru ?? "",
-          brand?.name ?? "",
-        ]
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(needle);
-      });
+      unsatisfiable = true;
+    } else {
+      const subtree = await getSubtreeIds(category.id);
+      base.push({ categoryAncestors: { $in: ids(subtree) } });
     }
   }
 
-  const dimensions: Record<string, Predicate> = {};
+  const needle = query.q?.trim();
+  if (needle) {
+    const rx = { $regex: escapeRegex(needle), $options: "i" };
+    // Substring match across the denormalised search text and the identifiers a
+    // buyer is most likely to paste. Phase 3 replaces this with an Atlas Search
+    // index; a regex scan is fine at a few hundred documents and wrong at a few
+    // hundred thousand.
+    base.push({
+      $or: [
+        { sku: rx },
+        { slug: rx },
+        { "name.ka": rx },
+        { "name.en": rx },
+        { "name.ru": rx },
+        { "searchText.ka": rx },
+        { "searchText.en": rx },
+        { "searchText.ru": rx },
+      ],
+    });
+  }
+
+  const dimensions: Record<string, Filter> = {};
 
   if (query.brands.length) {
-    const wanted = new Set(
-      query.brands
-        .map((slug) => getBrandBySlug(slug)?.id)
-        .filter((id): id is string => Boolean(id)),
-    );
-    dimensions.brand = (p) => wanted.has(p.brand);
+    const wanted = query.brands
+      .map((slug) => brands.find((b) => b.slug === slug)?.id)
+      .filter((id): id is string => Boolean(id));
+    // A filter naming only unknown brands must return nothing, not everything.
+    dimensions.brand = { brand: { $in: ids(wanted) } };
   }
 
   if (query.priceMin !== undefined || query.priceMax !== undefined) {
-    dimensions.price = (p) => {
-      const effective = p.salePrice ?? p.price;
-      if (query.priceMin !== undefined && effective < query.priceMin) return false;
-      if (query.priceMax !== undefined && effective > query.priceMax) return false;
-      return true;
-    };
+    const range: Record<string, number> = {};
+    if (query.priceMin !== undefined) range.$gte = query.priceMin;
+    if (query.priceMax !== undefined) range.$lte = query.priceMax;
+    dimensions.price = { effectivePrice: range };
   }
 
   if (query.inStockOnly) {
-    dimensions.stock = isHeldInStock;
+    dimensions.stock = { stockStatus: { $in: [...HELD_IN_STOCK] } };
   }
 
   for (const [key, constraint] of Object.entries(query.specs)) {
-    dimensions[`spec:${key}`] = (p) => matchesSpec(p, key, constraint);
+    const match: Filter = { key };
+    if (constraint.values?.length) {
+      match.valueString = { $in: constraint.values };
+    } else if (constraint.bool !== undefined) {
+      match.valueBool = constraint.bool;
+    } else if (constraint.min !== undefined || constraint.max !== undefined) {
+      const range: Record<string, number> = {};
+      if (constraint.min !== undefined) range.$gte = constraint.min;
+      if (constraint.max !== undefined) range.$lte = constraint.max;
+      match.valueNumber = range;
+    }
+    /**
+     * `$elemMatch` per key, ANDed — not a flat `{'specs.key': k, 'specs.valueNumber': v}`.
+     * The flat form matches a product where one array element supplies the key
+     * and a *different* element supplies the value, which is a false positive.
+     */
+    dimensions[`spec:${key}`] = { specs: { $elemMatch: match } };
   }
 
-  return { base, dimensions };
+  return { base, dimensions, unsatisfiable };
 }
 
-function applyAll(list: Product[], predicates: Predicate[]): Product[] {
-  return list.filter((p) => predicates.every((fn) => fn(p)));
-}
-
-function sortProducts(list: Product[], sort: ProductQuery["sort"], locale: "ka" | "en" | "ru") {
-  const sorted = [...list];
-  const effective = (p: Product) => p.salePrice ?? p.price;
-
+function sortStage(sort: ProductQuery["sort"], locale: Locale): PipelineStage.Sort["$sort"] {
   switch (sort) {
     case "price_asc":
-      return sorted.sort((a, b) => effective(a) - effective(b));
+      return { effectivePrice: 1, _id: 1 };
     case "price_desc":
-      return sorted.sort((a, b) => effective(b) - effective(a));
+      return { effectivePrice: -1, _id: 1 };
     case "newest":
-      return sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return { createdAt: -1, _id: 1 };
     case "name_asc":
-      return sorted.sort((a, b) =>
-        (a.name[locale] ?? a.name.ka).localeCompare(b.name[locale] ?? b.name.ka, locale),
-      );
+      // Binary order, not ICU collation. Mkhedruli and Cyrillic sort correctly
+      // by code point; mixed-case Latin does not (all uppercase sorts first).
+      // Revisit with a collation once the catalogue has enough Latin titles for
+      // it to be visible.
+      return { [`name.${locale}`]: 1, "name.ka": 1, _id: 1 };
     case "relevance":
     default:
-      // Featured first, then in-stock, then newest. Phase 3 replaces this with
-      // a hybrid lexical + vector score.
-      return sorted.sort((a, b) => {
-        if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
-        const aOut = a.stockStatus === "out";
-        const bOut = b.stockStatus === "out";
-        if (aOut !== bOut) return aOut ? 1 : -1;
-        return b.createdAt.localeCompare(a.createdAt);
-      });
+      // Featured first, then anything actually available, then newest. Phase 3
+      // replaces this with a fused lexical + vector score.
+      return { isFeatured: -1, stock: -1, createdAt: -1, _id: 1 };
   }
 }
 
-function buildBrandFacet(pool: Product[]): BrandFacet[] {
-  const counts = new Map<string, number>();
-  for (const p of pool) {
-    counts.set(p.brand, (counts.get(p.brand) ?? 0) + 1);
+/** `$facet` keys cannot contain dots, and spec keys are free-form. */
+function specFacetKey(key: string): string {
+  return `spec_${key.replace(/[^a-zA-Z0-9]/g, "_")}`;
+}
+
+type FacetRequest =
+  | { kind: "brands" }
+  | { kind: "price" }
+  | { kind: "inStock" }
+  | { kind: "spec"; def: SpecDefinition };
+
+function facetPipeline(request: FacetRequest): PipelineStage.FacetPipelineStage[] {
+  switch (request.kind) {
+    case "brands":
+      return [{ $group: { _id: "$brand", count: { $sum: 1 } } }];
+    case "price":
+      return [
+        {
+          $group: {
+            _id: null,
+            min: { $min: "$effectivePrice" },
+            max: { $max: "$effectivePrice" },
+          },
+        },
+      ];
+    case "inStock":
+      return [{ $match: { stockStatus: { $in: [...HELD_IN_STOCK] } } }, { $count: "n" }];
+    case "spec": {
+      const { def } = request;
+      const stages: PipelineStage.FacetPipelineStage[] = [
+        // Narrow to documents carrying the key before unwinding, so the unwind
+        // does not fan out the whole collection.
+        { $match: { "specs.key": def.key } },
+        { $unwind: "$specs" },
+        { $match: { "specs.key": def.key } },
+      ];
+      if (def.type === "enum") {
+        stages.push({ $group: { _id: "$specs.valueString", count: { $sum: 1 } } });
+      } else if (def.type === "bool") {
+        stages.push({
+          $match: { "specs.valueBool": true },
+        });
+        stages.push({ $count: "n" });
+      } else {
+        stages.push({
+          $group: {
+            _id: null,
+            min: { $min: "$specs.valueNumber" },
+            max: { $max: "$specs.valueNumber" },
+          },
+        });
+      }
+      return stages;
+    }
   }
-  return allBrands
+}
+
+type FacetResult = Record<string, unknown[]>;
+
+function readBrandFacet(rows: unknown[], brands: Brand[]): BrandFacet[] {
+  const counts = new Map<string, number>();
+  for (const row of rows as { _id: Types.ObjectId | null; count: number }[]) {
+    if (row._id) counts.set(row._id.toString(), row.count);
+  }
+  return brands
     .filter((b) => counts.has(b.id))
     .map((b) => ({ slug: b.slug, name: b.name, count: counts.get(b.id) ?? 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-function buildSpecFacet(def: SpecDefinition, pool: Product[]): SpecFacet | null {
-  const values = pool
-    .map((p) => specOf(p, def.key))
-    .filter((s): s is NonNullable<typeof s> => Boolean(s));
-
-  if (!values.length) return null;
+function readSpecFacet(def: SpecDefinition, rows: unknown[]): SpecFacet | null {
+  if (!rows.length) return null;
 
   if (def.type === "enum") {
     const counts = new Map<string, number>();
-    for (const v of values) {
-      if (v.valueString == null) continue;
-      counts.set(v.valueString, (counts.get(v.valueString) ?? 0) + 1);
+    for (const row of rows as { _id: string | null; count: number }[]) {
+      if (row._id != null) counts.set(row._id, row.count);
     }
     const buckets = (def.options ?? [])
       .filter((o) => counts.has(o.value))
@@ -201,107 +241,256 @@ function buildSpecFacet(def: SpecDefinition, pool: Product[]): SpecFacet | null 
   }
 
   if (def.type === "bool") {
-    const trueCount = values.filter((v) => v.valueBool === true).length;
+    const trueCount = (rows[0] as { n?: number }).n ?? 0;
     if (!trueCount) return null;
     return { key: def.key, label: def.label, type: "bool", trueCount };
   }
 
-  const numbers = values
-    .map((v) => v.valueNumber)
-    .filter((n): n is number => typeof n === "number");
-  if (!numbers.length) return null;
-  const min = Math.min(...numbers);
-  const max = Math.max(...numbers);
-  if (min === max) return null; // A single value is not a useful range control.
+  const { min, max } = rows[0] as { min?: number | null; max?: number | null };
+  if (min == null || max == null || min === max) return null; // A single value is not a range control.
   return { key: def.key, label: def.label, type: "number", unit: def.unit, min, max };
 }
 
-export function queryProducts(
+function emptyResult(query: ProductQuery, pageSize: number): ProductListResult {
+  return {
+    products: [],
+    total: 0,
+    page: 1,
+    pageSize,
+    totalPages: 1,
+    facets: { brands: [], price: { min: 0, max: 0 }, specs: [], inStockCount: 0 },
+  };
+}
+
+/**
+ * One faceted read: page of products, total, and every facet count.
+ *
+ * Facet requests are grouped by the filter they need. Every dimension the user
+ * has *not* filtered on shares the full filter, so the common case — a bare
+ * category page — collapses to a single round trip, and each active filter adds
+ * one more.
+ */
+export async function queryProducts(
   query: ProductQuery,
-  locale: "ka" | "en" | "ru" = "ka",
-): ProductListResult {
-  const { base, dimensions } = buildPredicates(query);
+  locale: Locale = "ka",
+): Promise<ProductListResult> {
+  await connectToDatabase();
+
+  const pageSize = query.pageSize > 0 ? query.pageSize : DEFAULT_PAGE_SIZE;
+  const brands = await getAllBrands();
+  const { base, dimensions, unsatisfiable } = await buildFilters(query, brands);
+  if (unsatisfiable) return emptyResult(query, pageSize);
+
+  const category = query.categorySlug ? await getCategoryBySlug(query.categorySlug) : undefined;
+  const schema = category ? await getEffectiveSpecSchema(category) : [];
+  const filterableSpecs = schema.filter((def) => def.filterable);
+
   const dimensionKeys = Object.keys(dimensions);
+  const filterExcluding = (excludeKey: string | null): Filter =>
+    and([...base, ...dimensionKeys.filter((k) => k !== excludeKey).map((k) => dimensions[k])]);
 
-  // Pool used for the result set: base + every dimension.
-  const fullPool = applyAll(products, [...base, ...dimensionKeys.map((k) => dimensions[k])]);
+  const requests: { excludeKey: string; request: FacetRequest }[] = [
+    { excludeKey: "brand", request: { kind: "brands" } },
+    { excludeKey: "price", request: { kind: "price" } },
+    { excludeKey: "stock", request: { kind: "inStock" } },
+    ...filterableSpecs.map((def) => ({
+      excludeKey: `spec:${def.key}`,
+      request: { kind: "spec" as const, def },
+    })),
+  ];
 
-  // Per-facet pool: base + every dimension EXCEPT the one being counted.
-  const poolExcluding = (excludeKey: string) =>
-    applyAll(products, [
-      ...base,
-      ...dimensionKeys.filter((k) => k !== excludeKey).map((k) => dimensions[k]),
+  const fullFilter = filterExcluding(null);
+  const fullSignature = JSON.stringify(fullFilter);
+
+  type Group = { filter: Filter; facets: Record<string, PipelineStage.FacetPipelineStage[]> };
+  const groups = new Map<string, Group>();
+  groups.set(fullSignature, {
+    filter: fullFilter,
+    facets: {
+      products: [
+        { $sort: sortStage(query.sort, locale) },
+        { $skip: Math.max(0, (Math.max(1, query.page) - 1) * pageSize) },
+        { $limit: pageSize },
+      ],
+      total: [{ $count: "n" }],
+    },
+  });
+
+  const facetNameFor = (request: FacetRequest) =>
+    request.kind === "spec" ? specFacetKey(request.def.key) : request.kind;
+
+  for (const { excludeKey, request } of requests) {
+    const filter = filterExcluding(excludeKey);
+    const signature = JSON.stringify(filter);
+    const group = groups.get(signature) ?? { filter, facets: {} };
+    group.facets[facetNameFor(request)] = facetPipeline(request);
+    groups.set(signature, group);
+  }
+
+  const results = await Promise.all(
+    [...groups.values()].map(async (group) => {
+      const [row] = await ProductModel.aggregate<FacetResult>([
+        { $match: group.filter },
+        { $facet: group.facets },
+      ]);
+      return { group, row: row ?? {} };
+    }),
+  );
+
+  const merged: FacetResult = {};
+  for (const { row } of results) Object.assign(merged, row);
+
+  const brandById = new Map(brands.map((b) => [b.id, b]));
+  const withBrand = (rows: unknown[]): Product[] =>
+    rows.map((row) => {
+      const product = toProduct(row as Parameters<typeof toProduct>[0]);
+      const brand = brandById.get(product.brand);
+      return { ...product, brandSlug: brand?.slug ?? "", brandName: brand?.name ?? "" };
+    });
+
+  const total = ((merged.total?.[0] as { n?: number } | undefined)?.n ?? 0) as number;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const requestedPage = Math.max(1, query.page);
+  let page = requestedPage;
+  let products = withBrand(merged.products ?? []);
+
+  // A page beyond the end is a stale bookmark, not an error: clamp and re-read
+  // rather than showing an empty grid over a non-empty result set.
+  if (!products.length && total > 0 && requestedPage > totalPages) {
+    page = totalPages;
+    const rows = await ProductModel.aggregate([
+      { $match: fullFilter },
+      { $sort: sortStage(query.sort, locale) },
+      { $skip: (page - 1) * pageSize },
+      { $limit: pageSize },
     ]);
+    products = withBrand(rows);
+  }
 
-  const category = query.categorySlug ? getCategoryBySlug(query.categorySlug) : undefined;
-  const schema = category ? getEffectiveSpecSchema(category) : [];
-
-  const brandPool = poolExcluding("brand");
-  const pricePool = poolExcluding("price");
-  const stockPool = poolExcluding("stock");
-
-  const priceValues = pricePool.map((p) => p.salePrice ?? p.price);
+  const priceRow = merged.price?.[0] as { min?: number | null; max?: number | null } | undefined;
 
   const facets: Facets = {
-    brands: buildBrandFacet(brandPool),
+    brands: readBrandFacet(merged.brands ?? [], brands),
     price: {
-      min: priceValues.length ? Math.floor(Math.min(...priceValues)) : 0,
-      max: priceValues.length ? Math.ceil(Math.max(...priceValues)) : 0,
+      min: Math.floor(priceRow?.min ?? 0),
+      max: Math.ceil(priceRow?.max ?? 0),
     },
-    specs: schema
-      .filter((def) => def.filterable)
-      .map((def) => buildSpecFacet(def, poolExcluding(`spec:${def.key}`)))
+    specs: filterableSpecs
+      .map((def) => readSpecFacet(def, merged[specFacetKey(def.key)] ?? []))
       .filter((f): f is SpecFacet => f !== null),
-    inStockCount: stockPool.filter(isHeldInStock).length,
+    inStockCount: ((merged.inStock?.[0] as { n?: number } | undefined)?.n ?? 0) as number,
   };
 
-  const sorted = sortProducts(fullPool, query.sort, locale);
-  const pageSize = query.pageSize > 0 ? query.pageSize : DEFAULT_PAGE_SIZE;
-  const total = sorted.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const page = Math.min(Math.max(1, query.page), totalPages);
-  const start = (page - 1) * pageSize;
-
-  return {
-    products: sorted.slice(start, start + pageSize),
-    total,
-    page,
-    pageSize,
-    totalPages,
-    facets,
-  };
+  return { products, total, page, pageSize, totalPages, facets };
 }
 
-export function getFeaturedProducts(limit = 8): Product[] {
-  return products
-    .filter((p) => p.isActive && p.isFeatured)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit);
+async function denormalise(rows: unknown[]): Promise<Product[]> {
+  const brands = await getAllBrands();
+  const brandById = new Map(brands.map((b) => [b.id, b]));
+  return rows.map((row) => {
+    const product = toProduct(row as Parameters<typeof toProduct>[0]);
+    const brand = brandById.get(product.brand);
+    return { ...product, brandSlug: brand?.slug ?? "", brandName: brand?.name ?? "" };
+  });
 }
 
-export function getSaleProducts(limit = 8): Product[] {
-  return products
-    .filter((p) => p.isActive && p.salePrice !== null)
-    .sort((a, b) => {
-      const da = (a.price - (a.salePrice ?? a.price)) / a.price;
-      const db = (b.price - (b.salePrice ?? b.price)) / b.price;
-      return db - da;
-    })
-    .slice(0, limit);
+export async function getProductBySlug(slug: string): Promise<Product | undefined> {
+  await connectToDatabase();
+  const doc = await ProductModel.findOne({ slug, isActive: true }).lean();
+  if (!doc) return undefined;
+  return (await denormalise([doc]))[0];
 }
 
-export function getRelatedProducts(product: Product, limit = 4): Product[] {
-  return products
-    .filter((p) => p.isActive && p.id !== product.id && p.category === product.category)
-    .sort((a, b) => Math.abs(a.price - product.price) - Math.abs(b.price - product.price))
-    .slice(0, limit);
+/** Slugs for `generateStaticParams`. Ids and localized fields are not needed. */
+export async function listActiveProductSlugs(): Promise<string[]> {
+  await connectToDatabase();
+  const docs = await ProductModel.find({ isActive: true }).select("slug").lean();
+  return docs.map((doc) => doc.slug);
 }
 
-export function countProductsInCategory(categorySlug: string): number {
-  const category = getCategoryBySlug(categorySlug);
+export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
+  await connectToDatabase();
+  const docs = await ProductModel.find({ isActive: true, isFeatured: true })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+  return denormalise(docs);
+}
+
+export async function getSaleProducts(limit = 8): Promise<Product[]> {
+  await connectToDatabase();
+  // Deepest discount first, so the row leads with the strongest offer.
+  const docs = await ProductModel.aggregate([
+    { $match: { isActive: true, salePrice: { $ne: null } } },
+    { $addFields: { discount: { $divide: [{ $subtract: ["$price", "$salePrice"] }, "$price"] } } },
+    { $sort: { discount: -1, _id: 1 } },
+    { $limit: limit },
+    { $unset: "discount" },
+  ]);
+  return denormalise(docs);
+}
+
+export async function getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
+  await connectToDatabase();
+  if (!Types.ObjectId.isValid(product.category)) return [];
+  // Nearest by price within the same leaf category — the closest thing to a
+  // like-for-like alternative before Phase 3 can compare on embeddings.
+  const docs = await ProductModel.aggregate([
+    {
+      $match: {
+        isActive: true,
+        category: new Types.ObjectId(product.category),
+        _id: { $ne: new Types.ObjectId(product.id) },
+      },
+    },
+    { $addFields: { priceGap: { $abs: { $subtract: ["$effectivePrice", product.effectivePrice] } } } },
+    { $sort: { priceGap: 1, _id: 1 } },
+    { $limit: limit },
+    { $unset: "priceGap" },
+  ]);
+  return denormalise(docs);
+}
+
+/**
+ * Subtree product count for every category, in one pass.
+ *
+ * `categoryAncestors` holds each product's ancestors *plus its own category*, so
+ * unwinding and grouping by that field yields exactly the subtree count per
+ * category. The header alone renders ~20 counts; asking per category would be 20
+ * round trips on every page.
+ */
+export const countProductsPerCategory = cache(async (): Promise<Map<string, number>> => {
+  await connectToDatabase();
+  const rows = await ProductModel.aggregate<{ _id: Types.ObjectId; count: number }>([
+    { $match: { isActive: true } },
+    { $unwind: "$categoryAncestors" },
+    { $group: { _id: "$categoryAncestors", count: { $sum: 1 } } },
+  ]);
+  return new Map(rows.map((row) => [row._id.toString(), row.count]));
+});
+
+export async function countProductsInCategory(categorySlug: string): Promise<number> {
+  await connectToDatabase();
+  const category = await getCategoryBySlug(categorySlug);
   if (!category) return 0;
-  const subtree = new Set(getSubtreeIds(category.id));
-  return products.filter(
-    (p) => p.isActive && p.categoryAncestors.some((id) => subtree.has(id)),
-  ).length;
+  const subtree = await getSubtreeIds(category.id);
+  return ProductModel.countDocuments({
+    isActive: true,
+    categoryAncestors: { $in: ids(subtree) },
+  });
+}
+
+/** Header autocomplete: prefix-weighted substring match, name and SKU only. */
+export async function suggestProducts(term: string, locale: Locale, limit = 8): Promise<Product[]> {
+  const needle = term.trim();
+  if (needle.length < 2) return [];
+  await connectToDatabase();
+  const rx = { $regex: escapeRegex(needle), $options: "i" };
+  const docs = await ProductModel.find({
+    isActive: true,
+    $or: [{ sku: rx }, { [`name.${locale}`]: rx }, { "name.ka": rx }, { "name.en": rx }],
+  })
+    .limit(limit)
+    .lean();
+  return denormalise(docs);
 }

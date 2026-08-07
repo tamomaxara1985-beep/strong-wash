@@ -9,32 +9,44 @@ import { SpecStrip } from "@/components/catalog/spec-strip";
 import { StockBadge } from "@/components/catalog/stock-badge";
 import { SectionHeading } from "@/components/layout/section-heading";
 import { ProductGallery } from "@/components/product/product-gallery";
+import { SaveProductButton } from "@/components/product/save-product-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
+import { getSession } from "@/lib/auth/session";
 import { discountPercent, pickLocale } from "@/lib/localized";
-import { getBrandById } from "@/lib/mock/brands";
-import { getCategoryById, getCategoryTrail } from "@/lib/mock/categories";
-import { getProductBySlug, products } from "@/lib/mock/products";
-import { getRelatedProducts } from "@/lib/queries/products";
+import { getSavedProductIds } from "@/lib/queries/account";
+import {
+  getCategoryById,
+  getCategoryTrail,
+  getSpecSchemaLookup,
+} from "@/lib/queries/categories";
+import {
+  getProductBySlug,
+  getRelatedProducts,
+  listActiveProductSlugs,
+} from "@/lib/queries/products";
 import { getCardSpecs, resolveSpecs } from "@/lib/specs";
 import type { Locale } from "@/lib/types";
 
 const PHONE = "+995 322 40 40 40";
 
-export function generateStaticParams() {
-  return routing.locales.flatMap((locale) =>
-    products
-      .filter((product) => product.isActive)
-      .map((product) => ({ locale, slug: product.slug })),
-  );
+export async function generateStaticParams() {
+  // See the category route: an unreachable database defers to request-time
+  // rendering rather than failing the build.
+  try {
+    const slugs = await listActiveProductSlugs();
+    return routing.locales.flatMap((locale) => slugs.map((slug) => ({ locale, slug })));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[locale]/p/[slug]">): Promise<Metadata> {
   const { locale, slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) return {};
 
   const typedLocale = locale as Locale;
@@ -55,19 +67,32 @@ export default async function ProductPage({ params }: PageProps<"/[locale]/p/[sl
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) notFound();
 
   const t = await getTranslations();
   const typedLocale = locale as Locale;
   const specLabels = { yes: t("common.yes"), no: t("common.no") };
 
-  const brand = getBrandById(product.brand);
-  const category = getCategoryById(product.category);
-  const trail = category ? getCategoryTrail(category) : [];
-  const allSpecs = resolveSpecs(product, typedLocale, specLabels);
-  const cardSpecs = getCardSpecs(product, typedLocale, specLabels);
-  const related = getRelatedProducts(product, 4);
+  // The brand name rides along on the product — the listing pipeline
+  // denormalises it, so the detail page needs no second read.
+  const brand = product.brandName
+    ? { slug: product.brandSlug, name: product.brandName }
+    : undefined;
+  // Saved state is per-user, so it is read here rather than inside the client
+  // button: the page already renders on the server and can send the answer down
+  // with the first paint instead of flashing an unsaved heart.
+  const session = await getSession();
+  const savedIds = session ? await getSavedProductIds(session.userId) : new Set<string>();
+
+  const category = await getCategoryById(product.category);
+  const [trail, related, specSchema] = await Promise.all([
+    category ? getCategoryTrail(category) : Promise.resolve([]),
+    getRelatedProducts(product, 4),
+    getSpecSchemaLookup(),
+  ]);
+  const allSpecs = resolveSpecs(product, typedLocale, specLabels, specSchema);
+  const cardSpecs = getCardSpecs(product, typedLocale, specLabels, specSchema);
   const percent = discountPercent(product.price, product.salePrice);
 
   return (
@@ -160,6 +185,11 @@ export default async function ProductPage({ params }: PageProps<"/[locale]/p/[sl
               <Phone aria-hidden className="size-4" />
               {t("product.contactCta")}
             </a>
+            <SaveProductButton
+              productId={product.id}
+              initiallySaved={savedIds.has(product.id)}
+              signedIn={Boolean(session)}
+            />
             <p className="text-muted-foreground text-xs leading-relaxed">
               {t("product.contactHint")}
             </p>

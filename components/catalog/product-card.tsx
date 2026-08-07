@@ -6,27 +6,27 @@ import { SpecStrip } from "@/components/catalog/spec-strip";
 import { StockBadge } from "@/components/catalog/stock-badge";
 import { Link } from "@/i18n/navigation";
 import { discountPercent, pickLocale } from "@/lib/localized";
-import { getBrandById } from "@/lib/mock/brands";
-import { getCardSpecs } from "@/lib/specs";
+import { getCardSpecs, type SpecSchemaLookup } from "@/lib/specs";
 import type { Locale, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function ProductCard({
   product,
   locale,
+  specSchema,
   priority = false,
   className,
 }: {
   product: Product;
   locale: Locale;
+  specSchema: SpecSchemaLookup;
   priority?: boolean;
   className?: string;
 }) {
   const t = useTranslations("common");
-  const brand = getBrandById(product.brand);
   const name = pickLocale(product.name, locale);
   const percent = discountPercent(product.price, product.salePrice);
-  const specs = getCardSpecs(product, locale, { yes: t("yes"), no: t("no") });
+  const specs = getCardSpecs(product, locale, { yes: t("yes"), no: t("no") }, specSchema);
   const cover = product.images[0];
 
   return (
@@ -53,9 +53,9 @@ export function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-2.5 p-3.5">
-        {brand ? (
+        {product.brandName ? (
           <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
-            {brand.name}
+            {product.brandName}
           </p>
         ) : null}
 

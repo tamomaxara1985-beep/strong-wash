@@ -10,10 +10,10 @@ import { CategoryIcon } from "@/components/layout/category-icon";
 import { SectionHeading } from "@/components/layout/section-heading";
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/lib/localized";
-import { brands } from "@/lib/mock/brands";
-import { getRootCategories } from "@/lib/mock/categories";
+import { getAllBrands } from "@/lib/queries/brands";
+import { getRootCategories, getSpecSchemaLookup } from "@/lib/queries/categories";
 import {
-  countProductsInCategory,
+  countProductsPerCategory,
   getFeaturedProducts,
   getSaleProducts,
 } from "@/lib/queries/products";
@@ -28,11 +28,17 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const typedLocale = locale as Locale;
   const specLabels = { yes: t("common.yes"), no: t("common.no") };
 
-  const roots = getRootCategories();
-  const featured = getFeaturedProducts(8);
-  const onSale = getSaleProducts(4);
+  // Independent reads, so they overlap rather than queue.
+  const [roots, featured, onSale, brands, specSchema, counts] = await Promise.all([
+    getRootCategories(),
+    getFeaturedProducts(8),
+    getSaleProducts(4),
+    getAllBrands(),
+    getSpecSchemaLookup(),
+    countProductsPerCategory(),
+  ]);
   const hero = featured[0];
-  const heroSpecs = hero ? getCardSpecs(hero, typedLocale, specLabels) : [];
+  const heroSpecs = hero ? getCardSpecs(hero, typedLocale, specLabels, specSchema) : [];
 
   const benefits = [
     { icon: Wrench, title: t("home.benefitDeliveryTitle"), text: t("home.benefitDeliveryText") },
@@ -133,7 +139,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
                   {pickLocale(category.name, typedLocale)}
                 </span>
                 <span className="text-data text-muted-foreground mt-auto text-xs">
-                  {countProductsInCategory(category.slug)} {t("catalog.products")}
+                  {counts.get(category.id) ?? 0} {t("catalog.products")}
                 </span>
               </Link>
             </li>

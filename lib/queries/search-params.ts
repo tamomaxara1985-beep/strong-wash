@@ -1,5 +1,10 @@
-import { DEFAULT_PAGE_SIZE } from "./products";
-import { SORT_OPTIONS, type ProductQuery, type SortOption, type SpecDefinition } from "../types";
+import {
+  DEFAULT_PAGE_SIZE,
+  SORT_OPTIONS,
+  type ProductQuery,
+  type SortOption,
+  type SpecDefinition,
+} from "../types";
 
 export type RawSearchParams = Record<string, string | string[] | undefined>;
 
