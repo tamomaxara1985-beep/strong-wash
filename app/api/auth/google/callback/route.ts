@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role ?? "customer",
+      epoch: user.sessionEpoch ?? 0,
     });
 
     // `next` is validated when it is stored, so it is safe to follow here.

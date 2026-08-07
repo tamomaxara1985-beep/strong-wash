@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role ?? "customer",
+      epoch: user.sessionEpoch ?? 0,
     });
 
     // A legitimate user who mistyped twice should not stay throttled after

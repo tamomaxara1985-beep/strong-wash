@@ -51,6 +51,18 @@ const userSchema = new Schema(
       default: [],
     },
     lastLoginAt: { type: Date, default: null },
+    /**
+     * Bumped whenever every existing session should stop counting — currently a
+     * password reset.
+     *
+     * Sessions are stateless JWTs, so there is no server-side list to revoke.
+     * The epoch is embedded in the token and compared on any path that already
+     * loads the user, which is every mutating handler (`requireUser`) and every
+     * protected page (`requireAdminPage`). A stale cookie can therefore still
+     * render a page's read-only chrome until it expires, but it cannot change
+     * anything — the gap is documented rather than hidden.
+     */
+    sessionEpoch: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

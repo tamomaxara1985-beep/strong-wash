@@ -13,6 +13,14 @@ export type SessionPayload = {
   email: string;
   name: string;
   role: UserRole;
+  /**
+   * The value of `user.sessionEpoch` when this token was issued.
+   *
+   * Compared against the stored epoch by anything that loads the user, so a
+   * password reset can retire tokens that were minted before it. Absent on
+   * tokens issued before this field existed, which are treated as epoch 0.
+   */
+  epoch: number;
 };
 
 /**
@@ -45,13 +53,14 @@ export async function signSession(payload: SessionPayload): Promise<string> {
 export async function verifySession(token: string): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
-    const { userId, email, name, role } = payload as Record<string, unknown>;
+    const { userId, email, name, role, epoch } = payload as Record<string, unknown>;
     if (typeof userId !== "string" || typeof email !== "string") return null;
     return {
       userId,
       email,
       name: typeof name === "string" ? name : "",
       role: role === "admin" ? "admin" : "customer",
+      epoch: typeof epoch === "number" ? epoch : 0,
     };
   } catch {
     return null;

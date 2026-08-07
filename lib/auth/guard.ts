@@ -53,6 +53,15 @@ export async function requireUser(): Promise<
     return { response: NextResponse.json({ error: "unauthenticated" }, { status: 401 }) };
   }
 
+  /**
+   * A session minted before the current epoch is retired. Bumped by a password
+   * reset, so someone who changed their password because a session was stolen
+   * actually stops that session from writing anything.
+   */
+  if ((session.epoch ?? 0) < (user.sessionEpoch ?? 0)) {
+    return { response: NextResponse.json({ error: "session_expired" }, { status: 401 }) };
+  }
+
   return { user: user as AuthedUser, userId: session.userId };
 }
 
@@ -84,6 +93,11 @@ export async function requireAdminPage(): Promise<AuthedUser> {
   await connectToDatabase();
   const user = await User.findById(session.userId);
   if (!user || user.role !== "admin") notFound();
+  // Same retirement rule as requireUser: a pre-reset cookie does not open the
+  // panel.
+  if ((session.epoch ?? 0) < (user.sessionEpoch ?? 0)) {
+    redirect(`/${DEFAULT_LOCALE}/sign-in?next=${encodeURIComponent("/admin")}`);
+  }
 
   return user as AuthedUser;
 }

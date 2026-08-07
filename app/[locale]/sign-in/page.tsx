@@ -76,12 +76,17 @@ export default async function SignInPage({
           <AuthForm mode="sign-in" redirectTo={redirectTo} />
         </div>
 
-        <p className="text-muted-foreground mt-4 text-sm">
-          {t("noAccount")}{" "}
-          <Link href="/sign-up" className="text-primary font-semibold hover:underline">
-            {t("signUp")}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p className="text-muted-foreground">
+            {t("noAccount")}{" "}
+            <Link href="/sign-up" className="text-primary font-semibold hover:underline">
+              {t("signUp")}
+            </Link>
+          </p>
+          <Link href="/forgot-password" className="text-muted-foreground hover:underline">
+            {t("forgotPassword")}
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   );

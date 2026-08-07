@@ -43,6 +43,19 @@ export const signInSchema = z.object({
   password: z.string().min(1),
 });
 
+export const passwordResetRequestSchema = z.object({
+  email,
+  /** Carried so the email and the link are in the locale the user was using. */
+  locale: z.string().trim().max(5).optional(),
+});
+
+export const passwordResetConfirmSchema = z.object({
+  token: z.string().trim().min(20).max(200),
+  // The same rule as sign-up: a reset is where a weak password would otherwise
+  // sneak past the policy.
+  password,
+});
+
 export const profileSchema = z.object({
   name: z.string().trim().min(2).max(120),
   phone: z.string().trim().max(40).optional().or(z.literal("")),
