@@ -1,7 +1,7 @@
 "use client";
 
-import { ImagePlus, Save, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ImagePlus, Save, Trash2, Upload, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AdminProductDetail, ProductFormOptions } from "@/lib/queries/admin";
 import type { LocalizedString, SpecDefinition } from "@/lib/types";
+import {
+  ACCEPT_ATTRIBUTE,
+  MAX_FILES,
+  MAX_FILE_BYTES,
+  formatBytes,
+} from "@/lib/uploads";
 import { cn } from "@/lib/utils";
 
 const LOCALES = ["ka", "en", "ru"] as const;
@@ -77,8 +83,10 @@ export function ProductForm({
   const router = useRouter();
   const [locale, setLocale] = useState<Locale>("ka");
   const [pending, setPending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
+  const uploadRef = useRef<HTMLInputElement>(null);
 
   const [draft, setDraft] = useState<Draft>(() => ({
     sku: product?.sku ?? "",
@@ -120,6 +128,58 @@ export function ProductForm({
     key: "name" | "shortDescription" | "description",
     value: string,
   ) => setDraft((current) => ({ ...current, [key]: { ...current[key], [locale]: value } }));
+
+  /**
+   * Uploads straight from this form.
+   *
+   * The picker below reuses the media library, but requiring a trip to another
+   * screen before a product can have a photo is a dead end when the library is
+   * empty — which it is for a new shop. Files land in the library too, so they
+   * stay reusable.
+   */
+  async function uploadImages(files: FileList | null) {
+    if (!files?.length) return;
+    setError(null);
+
+    const tooBig = Array.from(files).find((file) => file.size > MAX_FILE_BYTES);
+    if (tooBig) {
+      setError(`${tooBig.name} is over ${formatBytes(MAX_FILE_BYTES)}.`);
+      return;
+    }
+    if (files.length > MAX_FILES) {
+      setError(`At most ${MAX_FILES} files at a time.`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const form = new FormData();
+      for (const file of Array.from(files)) form.append("files", file, file.name);
+
+      const response = await fetch("/api/admin/media", { method: "POST", body: form });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string; reason?: string };
+        setError(
+          body.error === "uploads_not_configured"
+            ? "Image storage is not configured on this deployment."
+            : body.reason === "too_large"
+              ? `File too large — ${formatBytes(MAX_FILE_BYTES)} maximum.`
+              : body.reason === "unsupported_type"
+                ? "Only JPG, PNG, WebP and PDF are accepted."
+                : "Upload failed. Please try again.",
+        );
+        return;
+      }
+
+      const body = (await response.json()) as { created?: { url: string; title: string }[] };
+      for (const asset of body.created ?? []) addImage(asset.url, asset.title);
+      if (uploadRef.current) uploadRef.current.value = "";
+    } catch {
+      setError("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function addImage(url: string, title: string) {
     if (draft.images.some((image) => image.url === url)) return;
@@ -178,7 +238,25 @@ export function ProductForm({
       };
       if (body.fields) {
         setFields(body.fields);
-        setError("Some fields need attention.");
+
+        /**
+         * Jump to the locale that owns the failure.
+         *
+         * Every localized error is keyed `name.ka`, `description.ka` and so on,
+         * and those inputs only exist while their tab is open. Reporting "some
+         * fields need attention" while the offending field is on a hidden tab
+         * left no way to find it — which read as the form simply refusing to
+         * save.
+         */
+        const localeKey = Object.keys(body.fields).find((key) => /\.(ka|en|ru)$/.test(key));
+        const offending = localeKey?.split(".").pop() as Locale | undefined;
+        if (offending && offending !== locale) setLocale(offending);
+
+        setError(
+          offending && offending !== locale
+            ? `Some fields need attention — switched to ${offending.toUpperCase()}.`
+            : "Some fields need attention.",
+        );
       } else if (body.error === "forbidden" || body.error === "unauthenticated") {
         setError("Your session no longer has admin access. Sign in again.");
       } else {
@@ -306,8 +384,12 @@ export function ProductForm({
             aria-invalid={Boolean(fieldError("name.ka"))}
             className="h-10"
           />
-          {fieldError("name.ka") && locale === "ka" ? (
-            <p className="text-destructive text-xs">{fieldError("name.ka")}</p>
+          {/* Shown on whichever tab is open. The submit handler switches to the
+              offending locale, so the message is where the user is looking. */}
+          {fieldError(`name.${locale}`) ?? fieldError("name.ka") ? (
+            <p className="text-destructive text-xs">
+              {fieldError(`name.${locale}`) ?? fieldError("name.ka")}
+            </p>
           ) : null}
         </div>
 
@@ -320,8 +402,10 @@ export function ProductForm({
             onChange={(event) => setLocalized("shortDescription", event.target.value)}
             className="border-input bg-background focus-visible:border-primary w-full rounded-md border px-3 py-2 text-sm outline-none"
           />
-          {fieldError("shortDescription.ka") && locale === "ka" ? (
-            <p className="text-destructive text-xs">{fieldError("shortDescription.ka")}</p>
+          {fieldError(`shortDescription.${locale}`) ?? fieldError("shortDescription.ka") ? (
+            <p className="text-destructive text-xs">
+              {fieldError(`shortDescription.${locale}`) ?? fieldError("shortDescription.ka")}
+            </p>
           ) : null}
         </div>
 
@@ -334,8 +418,10 @@ export function ProductForm({
             onChange={(event) => setLocalized("description", event.target.value)}
             className="border-input bg-background focus-visible:border-primary w-full rounded-md border px-3 py-2 text-sm outline-none"
           />
-          {fieldError("description.ka") && locale === "ka" ? (
-            <p className="text-destructive text-xs">{fieldError("description.ka")}</p>
+          {fieldError(`description.${locale}`) ?? fieldError("description.ka") ? (
+            <p className="text-destructive text-xs">
+              {fieldError(`description.${locale}`) ?? fieldError("description.ka")}
+            </p>
           ) : null}
         </div>
       </section>
@@ -505,6 +591,33 @@ export function ProductForm({
       <section className="bg-card flex flex-col gap-3 rounded-lg border p-4">
         <h2 className="text-sm font-semibold">Images</h2>
 
+        {/* Upload without leaving the form. Files are also added to the media
+            library, so they can be reused on other products. */}
+        <div className="border-input flex flex-wrap items-center gap-3 rounded-md border border-dashed p-3">
+          <Label htmlFor="product-upload" className="text-sm font-semibold">
+            Upload photos
+          </Label>
+          <input
+            ref={uploadRef}
+            id="product-upload"
+            type="file"
+            multiple
+            accept={ACCEPT_ATTRIBUTE}
+            disabled={uploading || pending}
+            onChange={(event) => uploadImages(event.target.files)}
+            className="text-muted-foreground file:bg-secondary file:text-secondary-foreground hover:file:bg-secondary/70 text-sm file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-semibold disabled:opacity-50"
+          />
+          <span className="text-muted-foreground text-xs">
+            JPG, PNG or WebP — {formatBytes(MAX_FILE_BYTES)} each, {MAX_FILES} at a time
+          </span>
+          {uploading ? (
+            <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+              <Upload aria-hidden className="size-3.5 animate-pulse" />
+              uploading…
+            </span>
+          ) : null}
+        </div>
+
         {draft.images.length ? (
           <ul className="flex flex-wrap gap-2">
             {draft.images.map((image, index) => (
@@ -536,7 +649,8 @@ export function ProductForm({
           </ul>
         ) : (
           <p className="text-muted-foreground text-sm">
-            No images yet. Pick from the media library below — the first one is the cover.
+            No images yet. Upload above, or pick from the media library — the first
+            image is the cover.
           </p>
         )}
 
@@ -564,11 +678,7 @@ export function ProductForm({
                 ))}
             </ul>
           </div>
-        ) : (
-          <p className="text-muted-foreground text-xs">
-            The media library is empty. Upload files under Media library first.
-          </p>
-        )}
+        ) : null}
       </section>
 
       <section className="bg-card flex flex-wrap items-center gap-5 rounded-lg border p-4">
