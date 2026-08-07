@@ -31,6 +31,21 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+/**
+ * Every route under this layout is rendered per request regardless: the header
+ * reads the session cookie, which opts the whole subtree out of static
+ * rendering. Declaring it removes a build-time prerender pass that could only
+ * ever fail — it executed each page once against the database, so a build
+ * container without network access to Atlas took the whole deploy down with it
+ * rather than producing a site that renders on demand.
+ *
+ * This is not a permanent posture. Phase 5 of plan.md wants ISR on category and
+ * product pages, which needs the account chip moved into a client component that
+ * calls `/api/auth/me` — at that point this line comes out and the pages become
+ * cacheable again.
+ */
+export const dynamic = "force-dynamic";
+
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
