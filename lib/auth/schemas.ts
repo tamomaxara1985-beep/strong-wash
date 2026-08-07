@@ -135,6 +135,28 @@ export const productSchema = z.object({
   isFeatured: z.boolean().default(false),
 });
 
+export const categorySchema = z.object({
+  slug,
+  name: localizedRequired,
+  // Optional: not every category needs a description, and an empty one renders
+  // nothing rather than an empty paragraph.
+  description: z
+    .object({
+      ka: z.string().trim().max(2000).optional().or(z.literal("")),
+      en: z.string().trim().max(2000).optional().or(z.literal("")),
+      ru: z.string().trim().max(2000).optional().or(z.literal("")),
+    })
+    .optional(),
+  /** Empty string means "top level" — a form select cannot submit null. */
+  parentId: z.string().trim().optional().or(z.literal("")),
+  icon: z.string().trim().max(40).optional().or(z.literal("")),
+  order: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 0 : value),
+    z.coerce.number().int().min(0).max(9999),
+  ),
+  isActive: z.boolean().default(true),
+});
+
 export const savedProductSchema = z.object({
   productId: z.string().trim().min(1),
   action: z.enum(["add", "remove"]),

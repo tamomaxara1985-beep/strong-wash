@@ -154,6 +154,108 @@ export async function listMedia(search?: string): Promise<MediaRow[]> {
   }));
 }
 
+export type AdminCategoryRow = {
+  id: string;
+  slug: string;
+  path: string;
+  name: LocalizedString;
+  description?: LocalizedString;
+  parentId: string | null;
+  icon?: string;
+  order: number;
+  isActive: boolean;
+  /** Nesting level, for indenting the tree. */
+  depth: number;
+  children: number;
+  /** Filed directly here. */
+  ownProducts: number;
+  /** Including every descendant — what the storefront count shows. */
+  subtreeProducts: number;
+  specCount: number;
+  missingLocales: string[];
+};
+
+/**
+ * The tree, flattened depth-first so it renders as an indented list in one pass.
+ *
+ * Includes inactive categories: the storefront hides them, which is exactly why
+ * the panel has to show them.
+ */
+export async function listAdminCategories(): Promise<AdminCategoryRow[]> {
+  await connectToDatabase();
+
+  const [docs, ownCounts, subtreeCounts] = await Promise.all([
+    Category.find({}).sort({ order: 1 }).lean(),
+    Product.aggregate<{ _id: Types.ObjectId; n: number }>([
+      { $group: { _id: "$category", n: { $sum: 1 } } },
+    ]),
+    Product.aggregate<{ _id: Types.ObjectId; n: number }>([
+      { $unwind: "$categoryAncestors" },
+      { $group: { _id: "$categoryAncestors", n: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const own = new Map(ownCounts.map((r) => [String(r._id), r.n]));
+  const subtree = new Map(subtreeCounts.map((r) => [String(r._id), r.n]));
+  const childCount = new Map<string, number>();
+  for (const doc of docs) {
+    if (doc.parent) {
+      const key = String(doc.parent);
+      childCount.set(key, (childCount.get(key) ?? 0) + 1);
+    }
+  }
+
+  const byParent = new Map<string, typeof docs>();
+  for (const doc of docs) {
+    const key = doc.parent ? String(doc.parent) : "root";
+    byParent.set(key, [...(byParent.get(key) ?? []), doc]);
+  }
+
+  const rows: AdminCategoryRow[] = [];
+  const walk = (parentKey: string, depth: number) => {
+    for (const doc of (byParent.get(parentKey) ?? []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))) {
+      const id = String(doc._id);
+      rows.push({
+        id,
+        slug: doc.slug,
+        path: doc.path,
+        name: {
+          ka: doc.name?.ka ?? "",
+          en: doc.name?.en ?? undefined,
+          ru: doc.name?.ru ?? undefined,
+        },
+        description: doc.description?.ka
+          ? {
+              ka: doc.description.ka,
+              en: doc.description.en ?? undefined,
+              ru: doc.description.ru ?? undefined,
+            }
+          : undefined,
+        parentId: doc.parent ? String(doc.parent) : null,
+        icon: doc.icon ?? undefined,
+        order: doc.order ?? 0,
+        isActive: doc.isActive ?? true,
+        depth,
+        children: childCount.get(id) ?? 0,
+        ownProducts: own.get(id) ?? 0,
+        subtreeProducts: subtree.get(id) ?? 0,
+        specCount: doc.specSchema?.length ?? 0,
+        missingLocales: (["en", "ru"] as const).filter((locale) => !doc.name?.[locale]),
+      });
+      walk(id, depth + 1);
+    }
+  };
+  walk("root", 0);
+
+  return rows;
+}
+
+export async function getAdminCategory(id: string): Promise<AdminCategoryRow | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  const all = await listAdminCategories();
+  return all.find((row) => row.id === id) ?? null;
+}
+
 export type AdminProductRow = {
   id: string;
   sku: string;
