@@ -35,6 +35,27 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+/**
+ * Absolute base for the canonical URL, the hreflang alternates and the OG tags.
+ *
+ * Every `alternates` entry below is a relative path, and Next resolves those
+ * against `metadataBase`. Unset, it falls back to `http://localhost:3000`, which
+ * means a production deploy advertises localhost canonicals to crawlers.
+ *
+ * `VERCEL_PROJECT_PRODUCTION_URL` is injected by the platform, so preview
+ * deployments get the right host without configuring anything; the explicit
+ * variable still wins for a custom domain.
+ */
+function siteUrl(): URL {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+  if (explicit) return new URL(explicit);
+
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (vercel) return new URL(`https://${vercel}`);
+
+  return new URL("http://localhost:3000");
+}
+
 export async function generateMetadata({
   params,
 }: LayoutProps<"/[locale]">): Promise<Metadata> {
@@ -43,6 +64,7 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "common" });
 
   return {
+    metadataBase: siteUrl(),
     title: {
       default: `${t("brand")} — ${t("tagline")}`,
       template: `%s | ${t("brand")}`,
