@@ -162,6 +162,40 @@ export const savedProductSchema = z.object({
   action: z.enum(["add", "remove"]),
 });
 
+const optionalLocalized = z.object({
+  ka: z.string().trim().max(200).optional().or(z.literal("")),
+  en: z.string().trim().max(200).optional().or(z.literal("")),
+  ru: z.string().trim().max(200).optional().or(z.literal("")),
+});
+
+/**
+ * Every field is optional: empty means "fall back to the default", which is what
+ * clearing a box in the form has to mean.
+ *
+ * The hex rule is a security boundary, not only a validation one — the value is
+ * interpolated into a <style> block, so anything that could close the
+ * declaration could inject rules of its own.
+ */
+export const settingsSchema = z.object({
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  email: z.string().trim().toLowerCase().max(254).email().optional().or(z.literal("")),
+  address: optionalLocalized.optional(),
+  workHours: optionalLocalized.optional(),
+  brandYellow: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, "hex_format")
+    .optional()
+    .or(z.literal("")),
+  brandBlack: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, "hex_format")
+    .optional()
+    .or(z.literal("")),
+  fontKey: z.string().trim().max(40).optional().or(z.literal("")),
+});
+
 /** Flattens Zod issues into the `{field: code}` shape the API contract uses. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const fields: Record<string, string> = {};
