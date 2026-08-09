@@ -16,9 +16,9 @@
      fallback for glyphs the two webfonts lack. The lari sign is *not* covered
      by any of them, which is why it is drawn rather than typed — see
      `components/ui/lari.tsx`. */
-  --font-sans: var(--font-manrope), var(--font-noto-georgian), "Segoe UI", Sylfaen,
+  --font-sans: var(--font-body), var(--font-noto-georgian), "Segoe UI", Sylfaen,
     "Noto Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-manrope), var(--font-noto-georgian), "Segoe UI", Sylfaen,
+  --font-heading: var(--font-body), var(--font-noto-georgian), "Segoe UI", Sylfaen,
     "Noto Sans", ui-sans-serif, system-ui, sans-serif;
   /* Spec values, SKUs and prices are numerals + Latin units, so a mono face is
      safe — with the same lari-sign fallbacks appended. */
@@ -84,6 +84,12 @@
   --brand-yellow: #fec303;
   --brand-yellow-dark: #e0a800;
   --brand-black: #010101;
+
+  /* The face the admin picks. Indirection, not decoration: the utilities above
+     inline this variable's *reference*, so a runtime override of --font-body
+     reaches every `font-sans` and `font-heading` utility without rebuilding.
+     Defaults to Manrope, which is what the site shipped with. */
+  --font-body: var(--font-manrope);
 
   --background: #f6f6f4;
   --foreground: #101010;
