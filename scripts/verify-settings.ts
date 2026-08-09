@@ -54,6 +54,21 @@ async function main() {
 
     await SiteSettings.updateOne({ _id: SETTINGS_ID }, { $set: { phone: "+995 111" } }, { upsert: true });
     check("saving twice upserts rather than duplicating", (await SiteSettings.countDocuments({})) === 1);
+
+    const { HEX, contrastRatio, derivedShades, shade } = await import("../lib/settings/colors");
+
+    check("the default yellow carries black text", contrastRatio("#fec303", "#101010") >= 4.5);
+    check("a mid grey does not", contrastRatio("#767676", "#101010") < 4.5);
+    check("black on white is the maximum", Math.round(contrastRatio("#000000", "#ffffff")) === 21);
+    check("contrast is symmetric", contrastRatio("#fec303", "#101010") === contrastRatio("#101010", "#fec303"));
+    check("darkening moves toward black", shade("#fec303", -0.12) < "#fec303");
+    check("the derived light shade is close to the hand-tuned one", derivedShades("#fec303").light.startsWith("#e0"));
+    check("the derived dark shade is lighter than the source", derivedShades("#fec303").dark > "#fec303");
+
+    for (const bad of ["red", "#ff0", "#GGGGGG", "#fff);body{display:none", "fec303"]) {
+      check(`the hex regex refuses ${JSON.stringify(bad)}`, !HEX.test(bad));
+    }
+    check("the hex regex accepts #fec303", HEX.test("#fec303"));
   } finally {
     await SiteSettings.deleteOne({ _id: SETTINGS_ID });
     if (snapshot) {
