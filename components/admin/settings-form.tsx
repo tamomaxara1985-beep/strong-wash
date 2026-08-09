@@ -81,7 +81,14 @@ export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
       if (body.fields) {
         setFields(body.fields);
         setRatio(body.ratio);
-        setError("Some fields need attention.");
+        const localeKey = Object.keys(body.fields).find((key) => /\.(ka|en|ru)$/.test(key));
+        const offending = localeKey?.split(".").pop() as Locale | undefined;
+        if (offending && offending !== locale) setLocale(offending);
+        setError(
+          offending && offending !== locale
+            ? `Some fields need attention — switched to ${offending.toUpperCase()}.`
+            : "Some fields need attention.",
+        );
       } else {
         setError("That did not save. Please try again.");
       }
@@ -163,8 +170,12 @@ export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
             id={`address-${locale}`}
             value={draft.address[locale] ?? ""}
             onChange={(event) => setDraft({ ...draft, address: { ...draft.address, [locale]: event.target.value } })}
+            aria-invalid={Boolean(fieldError(`address.${locale}`))}
             className="h-10"
           />
+          {fieldError(`address.${locale}`) ? (
+            <p className="text-destructive text-xs">{fieldError(`address.${locale}`)}</p>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -173,8 +184,12 @@ export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
             id={`hours-${locale}`}
             value={draft.workHours[locale] ?? ""}
             onChange={(event) => setDraft({ ...draft, workHours: { ...draft.workHours, [locale]: event.target.value } })}
+            aria-invalid={Boolean(fieldError(`workHours.${locale}`))}
             className="h-10"
           />
+          {fieldError(`workHours.${locale}`) ? (
+            <p className="text-destructive text-xs">{fieldError(`workHours.${locale}`)}</p>
+          ) : null}
         </div>
       </section>
 
