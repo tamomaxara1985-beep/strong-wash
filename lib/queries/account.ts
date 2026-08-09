@@ -5,7 +5,7 @@ import { Product as ProductModel } from "../models/product";
 import { QuoteRequest } from "../models/quote-request";
 import { User } from "../models/user";
 import type { LocalizedString, Product } from "../types";
-import { getAllBrands } from "./brands";
+import { getAllBrandsIncludingInactive } from "./brands";
 import { toProduct } from "./map";
 
 export type SavedProduct = Product & { savedAt: null };
@@ -27,7 +27,10 @@ export async function getSavedProducts(userId: string): Promise<Product[]> {
 
   const [docs, brands] = await Promise.all([
     ProductModel.find({ _id: { $in: ids }, isActive: true }).lean(),
-    getAllBrands(),
+    // Unfiltered, like the two sites in lib/queries/products.ts: a hidden brand
+    // is a merchandising choice, not a delete, so a saved product must still show
+    // its manufacturer instead of a blank one.
+    getAllBrandsIncludingInactive(),
   ]);
 
   const brandById = new Map(brands.map((b) => [b.id, b]));

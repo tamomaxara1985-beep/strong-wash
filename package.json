@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
+    "verify:brands": "tsx scripts/verify-brands.ts",
     "set-role": "tsx scripts/set-role.ts"
   },
   "dependencies": {

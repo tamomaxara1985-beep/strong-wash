@@ -93,9 +93,16 @@ function isFailure(value: unknown): value is BuildFailure {
   return typeof value === "object" && value !== null && "code" in value && "field" in value;
 }
 
-/** Denormalised haystack for the substring search, per locale. */
-function buildSearchText(
-  input: ProductInput,
+/**
+ * Denormalised haystack for the substring search, per locale.
+ *
+ * Exported because the brand write path rebuilds it too: `brandName` is baked in
+ * here, so renaming a brand leaves every one of its products advertising the old
+ * manufacturer. The parameter is narrowed to the three fields actually read so a
+ * stored document can be passed as readily as a `ProductInput`.
+ */
+export function buildSearchText(
+  input: { name: LocalizedString; sku: string; shortDescription?: LocalizedString },
   brandName: string,
   specs: ProductSpec[],
 ): LocalizedString {
