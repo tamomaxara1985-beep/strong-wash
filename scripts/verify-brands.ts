@@ -96,6 +96,20 @@ async function main() {
     check("the new name is in searchText", after?.searchText?.en?.includes("Verify Beta") === true);
     check("the old name is gone", after?.searchText?.en?.includes("Verify Alpha") === false);
     check("the product's own name survived", after?.searchText?.en?.includes("Verify Machine") === true);
+
+    await Brand.updateOne({ _id: brand._id }, { $set: { isActive: false } });
+
+    const { getAllBrands, getAllBrandsIncludingInactive } = await import("../lib/queries/brands");
+    const active = await getAllBrands();
+    const all = await getAllBrandsIncludingInactive();
+    check(
+      "a hidden brand is absent from the active list",
+      !active.some((b) => b.slug === `${PREFIX}alpha`),
+    );
+    check(
+      "but present in the unfiltered one, so its products keep a name",
+      all.some((b) => b.slug === `${PREFIX}alpha`),
+    );
   } finally {
     await cleanup();
     await mongoose.disconnect();
