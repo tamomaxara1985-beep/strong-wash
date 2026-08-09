@@ -58,6 +58,44 @@ async function main() {
     const hidden = (await listAdminBrands()).find((r) => r.slug === `${PREFIX}alpha`);
     check("listAdminBrands still lists it once hidden", Boolean(hidden));
     check("and reports it as inactive", hidden?.isActive === false);
+
+    await Brand.updateOne({ _id: brand._id }, { $set: { isActive: true } });
+
+    const { canDelete, repairBrandSearchText } = await import("../lib/brands/write");
+    check("an unused brand can be deleted", (await canDelete(brand._id)).ok === true);
+
+    // A product needs a category ref; any existing one will do, since nothing here
+    // reads it back.
+    const { Category } = await import("../lib/models/category");
+    const category = await Category.findOne({}).select("_id").lean();
+    if (!category) throw new Error("no categories in the database — run `npm run seed` first");
+
+    await Product.create({
+      sku: `${PREFIX}sku-1`,
+      slug: `${PREFIX}product-1`,
+      name: { ka: "სატესტო", en: "Verify Machine", ru: "Тест" },
+      shortDescription: { ka: "ა", en: "b", ru: "в" },
+      description: { ka: "ა", en: "b", ru: "в" },
+      brand: brand._id,
+      category: category._id,
+      categoryAncestors: [category._id],
+      price: 100,
+      effectivePrice: 100,
+      searchText: { ka: "Verify Alpha", en: "Verify Alpha", ru: "Verify Alpha" },
+      specs: [],
+    });
+
+    const blocked = await canDelete(brand._id);
+    check("a brand with products cannot be deleted", blocked.ok === false);
+    check("and the refusal names the count", blocked.ok === false && blocked.products === 1);
+
+    const repaired = await repairBrandSearchText(brand._id, "Verify Beta");
+    check("renaming repairs its products", repaired === 1);
+
+    const after = await Product.findOne({ sku: `${PREFIX}sku-1` }).select("searchText").lean();
+    check("the new name is in searchText", after?.searchText?.en?.includes("Verify Beta") === true);
+    check("the old name is gone", after?.searchText?.en?.includes("Verify Alpha") === false);
+    check("the product's own name survived", after?.searchText?.en?.includes("Verify Machine") === true);
   } finally {
     await cleanup();
     await mongoose.disconnect();

@@ -157,6 +157,27 @@ export const categorySchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+/**
+ * `name` is a plain string, not `localizedRequired`: manufacturer names are proper
+ * nouns and the model stores one string for all three locales.
+ */
+export const brandSchema = z.object({
+  slug,
+  name: z.string().trim().min(1, "required").max(80),
+  description: z
+    .object({
+      ka: z.string().trim().max(2000).optional().or(z.literal("")),
+      en: z.string().trim().max(2000).optional().or(z.literal("")),
+      ru: z.string().trim().max(2000).optional().or(z.literal("")),
+    })
+    .optional(),
+  order: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 0 : value),
+    z.coerce.number().int().min(0).max(9999),
+  ),
+  isActive: z.boolean().default(true),
+});
+
 export const savedProductSchema = z.object({
   productId: z.string().trim().min(1),
   action: z.enum(["add", "remove"]),
