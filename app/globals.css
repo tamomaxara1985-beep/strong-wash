@@ -107,7 +107,7 @@
   --secondary-foreground: #101010;
   --muted: #f0efec;
   --muted-foreground: #5f5f5a;
-  --accent: var(--brand-yellow);
+  --accent: #fff3cc;
   --accent-foreground: #101010;
   --destructive: #b3261e;
   --border: #e3e2dc;
@@ -126,14 +126,14 @@
   --sidebar-foreground: #101010;
   --sidebar-primary: #101010;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--brand-yellow);
+  --sidebar-accent: #fff3cc;
   --sidebar-accent-foreground: #101010;
   --sidebar-border: #e3e2dc;
   --sidebar-ring: #101010;
 
   --ink: #010101;
   --ink-soft: #1c1c1a;
-  --foam: var(--brand-yellow);
+  --foam: #fff3cc;
   /* Discount is the brand yellow with black text — the highest-contrast pair
      in the palette, and unmistakably this brand. */
   --sale: var(--brand-yellow);

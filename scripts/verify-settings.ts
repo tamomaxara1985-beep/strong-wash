@@ -46,9 +46,9 @@ async function main() {
     check("with no document, fontKey matches the default", empty.fontKey === "manrope");
     check(
       "with no document, the localized address matches the default",
-      empty.address.ka === DEFAULT_SETTINGS.address.ka &&
-        empty.address.en === DEFAULT_SETTINGS.address.en &&
-        empty.address.ru === DEFAULT_SETTINGS.address.ru,
+      empty.address.ka === "თბილისი, ქ. წერეთლის გამზ. 116" &&
+        empty.address.en === "116 Ts. Tsereteli Ave, Tbilisi" &&
+        empty.address.ru === "Тбилиси, пр. Ц. Церетели 116",
     );
 
     await SiteSettings.updateOne(
