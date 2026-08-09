@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { derivedShades } from "@/lib/settings/colors";
+import { HEX, derivedShades } from "@/lib/settings/colors";
 import type { ResolvedSettings } from "@/lib/settings/defaults";
 import { FONTS } from "@/lib/settings/fonts";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,10 @@ function messageFor(code: string, ratio?: number): string {
       return ratio
         ? `Too dark for the black text it carries — ${ratio}:1, needs 4.5:1.`
         : "Too dark for the text it carries.";
+    case "pair_contrast":
+      return ratio
+        ? `The brand colour and the ink colour are used together on buttons and need 4.5:1 between them — currently ${ratio}:1.`
+        : "The brand colour and the ink colour are used together on buttons and need 4.5:1 between them.";
     case "invalid":
       return "Not one of the available choices.";
     case "required":
@@ -99,9 +103,7 @@ export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
     }
   }
 
-  const shades = /^#[0-9a-fA-F]{6}$/.test(draft.brandYellow)
-    ? derivedShades(draft.brandYellow)
-    : null;
+  const shades = HEX.test(draft.brandYellow) ? derivedShades(draft.brandYellow) : null;
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
@@ -200,7 +202,7 @@ export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
             <div className="flex items-center gap-2">
               <input
                 type="color"
-                value={/^#[0-9a-fA-F]{6}$/.test(draft.brandYellow) ? draft.brandYellow : "#fec303"}
+                value={HEX.test(draft.brandYellow) ? draft.brandYellow : "#fec303"}
                 onChange={(event) => setDraft({ ...draft, brandYellow: event.target.value })}
                 className="h-10 w-14 rounded-md border"
                 aria-label="Brand colour picker"
@@ -228,7 +230,7 @@ export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
             <div className="flex items-center gap-2">
               <input
                 type="color"
-                value={/^#[0-9a-fA-F]{6}$/.test(draft.brandBlack) ? draft.brandBlack : "#010101"}
+                value={HEX.test(draft.brandBlack) ? draft.brandBlack : "#010101"}
                 onChange={(event) => setDraft({ ...draft, brandBlack: event.target.value })}
                 className="h-10 w-14 rounded-md border"
                 aria-label="Ink colour picker"

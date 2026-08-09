@@ -7,6 +7,7 @@ import { fieldErrors, settingsSchema } from "@/lib/auth/schemas";
 import { connectToDatabase } from "@/lib/db";
 import { SETTINGS_ID, SiteSettings } from "@/lib/models/site-settings";
 import { contrastRatio } from "@/lib/settings/colors";
+import { DEFAULT_SETTINGS } from "@/lib/settings/defaults";
 import { FONT_KEYS } from "@/lib/settings/fonts";
 
 /** Text painted on each brand colour, so the guard measures the real pairing. */
@@ -61,6 +62,28 @@ export async function PATCH(request: NextRequest) {
           { status: 422 },
         );
       }
+    }
+
+    /**
+     * `catalog-menu.tsx` and `quote-request-dialog.tsx` paint the two brand
+     * colours directly on each other — brand black text on the brand yellow
+     * button. Each colour can pass its own guard above and still land at a
+     * failing ratio once paired, so the pairing itself is measured too. An
+     * empty field means "use the default", which is what actually renders, so
+     * the fallback is what gets checked here.
+     */
+    const pairYellow = brandYellow || DEFAULT_SETTINGS.brandYellow;
+    const pairBlack = brandBlack || DEFAULT_SETTINGS.brandBlack;
+    const pairRatio = contrastRatio(pairYellow, pairBlack);
+    if (pairRatio < MIN_RATIO) {
+      return NextResponse.json(
+        {
+          error: "validation_failed",
+          fields: { brandYellow: "pair_contrast" },
+          ratio: Number(pairRatio.toFixed(2)),
+        },
+        { status: 422 },
+      );
     }
 
     await connectToDatabase();

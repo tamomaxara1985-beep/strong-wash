@@ -1,4 +1,4 @@
-import { derivedShades } from "@/lib/settings/colors";
+import { HEX, derivedShades } from "@/lib/settings/colors";
 import { DEFAULT_SETTINGS, type ResolvedSettings } from "@/lib/settings/defaults";
 import { findFont } from "@/lib/settings/fonts";
 
@@ -11,22 +11,32 @@ import { findFont } from "@/lib/settings/fonts";
  * It renders in <head> and inline, which is the point: a stylesheet request or a
  * client effect would both paint the default palette first and then correct it.
  *
- * The values are safe to interpolate because the schema already restricted them
- * to `#rrggbb` and to a key from the font allowlist — there is no path here for a
- * value that could close the declaration.
+ * The API already restricts these to `#rrggbb` and to a key from the font
+ * allowlist, so nothing in-app can reach this with an unsafe value — but this
+ * component is in the root layout, on every page, and `dangerouslySetInnerHTML`
+ * is the injection point. A value written by `mongosh`, a restored dump, or a
+ * future second writer would escape the element on save, so `HEX.test(...)` is
+ * required here too rather than trusted from the schema at the other end.
  */
 export function SettingsStyle({ settings }: { settings: ResolvedSettings }) {
   const declarations: string[] = [];
   const darkDeclarations: string[] = [];
 
-  if (settings.brandYellow !== DEFAULT_SETTINGS.brandYellow) {
+  if (
+    HEX.test(settings.brandYellow) &&
+    settings.brandYellow.toLowerCase() !== DEFAULT_SETTINGS.brandYellow.toLowerCase()
+  ) {
     const shades = derivedShades(settings.brandYellow);
     declarations.push(`--brand-yellow:${settings.brandYellow}`, `--brand-yellow-dark:${shades.light}`);
     darkDeclarations.push(`--brand-yellow:${settings.brandYellow}`, `--brand-yellow-dark:${shades.dark}`);
   }
 
-  if (settings.brandBlack !== DEFAULT_SETTINGS.brandBlack) {
+  if (
+    HEX.test(settings.brandBlack) &&
+    settings.brandBlack.toLowerCase() !== DEFAULT_SETTINGS.brandBlack.toLowerCase()
+  ) {
     declarations.push(`--brand-black:${settings.brandBlack}`);
+    darkDeclarations.push(`--brand-black:${settings.brandBlack}`);
   }
 
   if (settings.fontKey !== DEFAULT_SETTINGS.fontKey) {

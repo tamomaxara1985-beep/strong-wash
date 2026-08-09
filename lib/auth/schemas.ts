@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { HEX } from "@/lib/settings/colors";
+
 /**
  * Server-side validation. The forms mirror these rules for feedback, but the
  * route handlers are the enforcement point — a client can post anything.
@@ -184,13 +186,13 @@ export const settingsSchema = z.object({
   brandYellow: z
     .string()
     .trim()
-    .regex(/^#[0-9a-fA-F]{6}$/, "hex_format")
+    .regex(HEX, "hex_format")
     .optional()
     .or(z.literal("")),
   brandBlack: z
     .string()
     .trim()
-    .regex(/^#[0-9a-fA-F]{6}$/, "hex_format")
+    .regex(HEX, "hex_format")
     .optional()
     .or(z.literal("")),
   fontKey: z.string().trim().max(40).optional().or(z.literal("")),

@@ -208,7 +208,9 @@ practice.
 4. The contrast guard accepts a colour at 4.5:1 and refuses one just below it,
    reporting the measured ratio.
 5. The hex regex refuses `red`, `#ff0`, `#GGGGGG` and `#fff);body{display:none`.
-6. A localized field with only `ka` set falls back to `ka` for en and ru.
+6. A localized field with only `ka` set falls back to the admin's stored `ka`
+   for en and ru, and a field with nothing stored at all still falls back to
+   the default.
 7. `getSiteSettings` returns `DEFAULT_SETTINGS` rather than throwing when the
    query fails.
 

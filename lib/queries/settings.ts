@@ -5,15 +5,26 @@ import { SETTINGS_ID, SiteSettings } from "../models/site-settings";
 import { DEFAULT_SETTINGS, type ResolvedSettings } from "../settings/defaults";
 import type { LocalizedString } from "../types";
 
-/** A stored localized value wins only for the locales it actually fills in. */
+/**
+ * A stored localized value wins only for the locales it actually fills in.
+ *
+ * An unset locale falls back to the admin's own stored `ka` when there is
+ * one — the same contract `pickLocale` uses everywhere else in this
+ * codebase — and only to the default when the admin has stored nothing at
+ * all. Falling back to the default per-locale instead would mean editing
+ * only the Georgian address leaves `/en` and `/ru` serving the previous
+ * address indefinitely: wrong data, not a missing translation.
+ */
 function mergeLocalized(
   stored: { ka?: string | null; en?: string | null; ru?: string | null } | null | undefined,
   fallback: LocalizedString,
 ): LocalizedString {
+  const storedKa = stored?.ka?.trim();
+  const ka = storedKa || fallback.ka;
   return {
-    ka: stored?.ka?.trim() || fallback.ka,
-    en: stored?.en?.trim() || fallback.en,
-    ru: stored?.ru?.trim() || fallback.ru,
+    ka,
+    en: stored?.en?.trim() || (storedKa ? ka : fallback.en),
+    ru: stored?.ru?.trim() || (storedKa ? ka : fallback.ru),
   };
 }
 
