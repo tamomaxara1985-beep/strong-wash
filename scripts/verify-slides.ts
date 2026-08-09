@@ -89,7 +89,18 @@ async function main() {
     }
 
     check("a relative path is accepted", isSiteRelativePath("/c/sand-washing"));
-    for (const bad of ["https://evil.example", "//evil.example", "javascript:alert(1)", "c/x", ""]) {
+    check("a nested relative path is accepted", isSiteRelativePath("/c/automatic-systems/gantry"));
+    for (const bad of [
+      "https://evil.example",
+      "//evil.example",
+      "javascript:alert(1)",
+      "c/x",
+      "",
+      "/\t/evil.example",
+      "/\r/evil.example",
+      "/\n/evil.example",
+      "/\\evil.example",
+    ]) {
       check(`the href rule refuses ${JSON.stringify(bad)}`, !isSiteRelativePath(bad));
     }
   } finally {

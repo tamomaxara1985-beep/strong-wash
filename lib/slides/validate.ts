@@ -37,7 +37,22 @@ export function isCloudinaryImageUrl(value: string): boolean {
  * `javascript:` value into something worse. A leading `//` is rejected too: the
  * browser reads it as protocol-relative and it leaves the site just as surely as
  * `https://` does.
+ *
+ * A raw prefix check on the string is not enough: the WHATWG URL parser strips
+ * literal tabs, CRs and LFs out of a URL before parsing it, so a value like
+ * `/\t/evil.example` — a leading slash, a tab, then a slash — resolves to the
+ * protocol-relative `//evil.example` even though `startsWith("//")` is false on
+ * the raw string. The browser normalises away characters a string check cannot
+ * see, so after the cheap structural gate this asks the URL parser itself where
+ * the value actually resolves, against a sentinel base, and requires the host to
+ * come back unchanged.
  */
 export function isSiteRelativePath(value: string): boolean {
-  return value.startsWith("/") && !value.startsWith("//");
+  if (!value.startsWith("/") || value.startsWith("//")) return false;
+
+  try {
+    return new URL(value, "https://sentinel.invalid").host === "sentinel.invalid";
+  } catch {
+    return false;
+  }
 }
