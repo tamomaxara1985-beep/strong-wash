@@ -437,7 +437,7 @@ export function ProductForm({
           >
             {options.brands.map((brand) => (
               <option key={brand.id} value={brand.id}>
-                {brand.name}
+                {brand.isActive ? brand.name : `${brand.name} (hidden)`}
               </option>
             ))}
           </select>

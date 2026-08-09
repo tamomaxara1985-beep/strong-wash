@@ -454,7 +454,12 @@ export async function getAdminProduct(id: string): Promise<AdminProductDetail | 
 }
 
 export type ProductFormOptions = {
-  brands: { id: string; name: string }[];
+  /**
+   * Every brand, hidden ones included. Filtering to active would leave a product
+   * on a hidden brand with no matching option, and the select would silently
+   * reassign it on the next save.
+   */
+  brands: { id: string; name: string; isActive: boolean }[];
   /** Leaf-first list with the full path, so the picker is unambiguous. */
   categories: { id: string; label: string; specSchema: SpecDefinition[] }[];
   media: { id: string; url: string; title: string; isImage: boolean }[];
@@ -470,7 +475,7 @@ export async function getProductFormOptions(): Promise<ProductFormOptions> {
   await connectToDatabase();
 
   const [brands, categories, media] = await Promise.all([
-    Brand.find({}).sort({ order: 1 }).select("name").lean(),
+    Brand.find({}).sort({ order: 1 }).select("name isActive").lean(),
     getAllCategories(),
     MediaAsset.find({}).sort({ createdAt: -1 }).limit(200).lean(),
   ]);
@@ -490,7 +495,7 @@ export async function getProductFormOptions(): Promise<ProductFormOptions> {
   );
 
   return {
-    brands: brands.map((b) => ({ id: String(b._id), name: b.name })),
+    brands: brands.map((b) => ({ id: String(b._id), name: b.name, isActive: b.isActive ?? true })),
     categories: withSchema.sort((a, b) => a.label.localeCompare(b.label)),
     media: media.map((m) => ({
       id: String(m._id),
