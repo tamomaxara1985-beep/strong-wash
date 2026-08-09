@@ -73,6 +73,10 @@ async function main() {
       check(`the hex regex refuses ${JSON.stringify(bad)}`, !HEX.test(bad));
     }
     check("the hex regex accepts #fec303", HEX.test("#fec303"));
+
+    const { FONT_KEYS, findFont } = await import("../lib/settings/fonts");
+    check("the default font key is in the allowlist", FONT_KEYS.includes("manrope"));
+    check("an unknown key falls back rather than throwing", findFont("no-such-font").key === FONT_KEYS[0]);
   } finally {
     await SiteSettings.deleteOne({ _id: SETTINGS_ID });
     if (snapshot) {
