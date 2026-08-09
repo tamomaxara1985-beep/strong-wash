@@ -11,10 +11,29 @@ export const getAllBrands = cache(async (): Promise<Brand[]> => {
   return docs.map(toBrand);
 });
 
+/**
+ * Every brand, hidden ones included.
+ *
+ * Name resolution must not depend on `isActive`: a product whose brand is hidden
+ * is still listed, and reading it from the active-only list would render a blank
+ * manufacturer instead of an inactive one. Filters and facets keep using
+ * `getAllBrands` — hiding a brand should remove it as a *choice*, not as a label.
+ */
+export const getAllBrandsIncludingInactive = cache(async (): Promise<Brand[]> => {
+  await connectToDatabase();
+  const docs = await BrandModel.find({}).sort({ order: 1 }).lean();
+  return docs.map(toBrand);
+});
+
+// Unused today (the same-named functions in lib/mock/brands.ts are a different
+// module), but "resolve a brand" is exactly the job that must not go blank when
+// the brand is hidden, so both read the unfiltered list rather than the
+// active-only `getAllBrands`.
+
 export async function getBrandBySlug(slug: string): Promise<Brand | undefined> {
-  return (await getAllBrands()).find((b) => b.slug === slug);
+  return (await getAllBrandsIncludingInactive()).find((b) => b.slug === slug);
 }
 
 export async function getBrandById(id: string): Promise<Brand | undefined> {
-  return (await getAllBrands()).find((b) => b.id === id);
+  return (await getAllBrandsIncludingInactive()).find((b) => b.id === id);
 }

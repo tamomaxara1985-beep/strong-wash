@@ -256,6 +256,63 @@ export async function getAdminCategory(id: string): Promise<AdminCategoryRow | n
   return all.find((row) => row.id === id) ?? null;
 }
 
+export type AdminBrandRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description?: LocalizedString;
+  order: number;
+  isActive: boolean;
+  /** Products assigned to this brand, active or not — the delete guard's number. */
+  productCount: number;
+};
+
+/**
+ * Every brand with its product count.
+ *
+ * Includes inactive brands: the storefront hides them, which is exactly why the
+ * panel has to show them.
+ */
+export async function listAdminBrands(): Promise<AdminBrandRow[]> {
+  await connectToDatabase();
+
+  const [docs, counts] = await Promise.all([
+    Brand.find({}).sort({ order: 1 }).lean(),
+    Product.aggregate<{ _id: Types.ObjectId; n: number }>([
+      { $group: { _id: "$brand", n: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const byBrand = new Map(counts.map((row) => [String(row._id), row.n]));
+
+  return docs
+    .map((doc) => {
+      const id = String(doc._id);
+      return {
+        id,
+        slug: doc.slug,
+        name: doc.name,
+        description: doc.description?.ka
+          ? {
+              ka: doc.description.ka,
+              en: doc.description.en ?? undefined,
+              ru: doc.description.ru ?? undefined,
+            }
+          : undefined,
+        order: doc.order ?? 0,
+        isActive: doc.isActive ?? true,
+        productCount: byBrand.get(id) ?? 0,
+      };
+    })
+    .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+}
+
+export async function getAdminBrand(id: string): Promise<AdminBrandRow | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  const all = await listAdminBrands();
+  return all.find((row) => row.id === id) ?? null;
+}
+
 export type AdminProductRow = {
   id: string;
   sku: string;
@@ -397,7 +454,12 @@ export async function getAdminProduct(id: string): Promise<AdminProductDetail | 
 }
 
 export type ProductFormOptions = {
-  brands: { id: string; name: string }[];
+  /**
+   * Every brand, hidden ones included. Filtering to active would leave a product
+   * on a hidden brand with no matching option, and the select would silently
+   * reassign it on the next save.
+   */
+  brands: { id: string; name: string; isActive: boolean }[];
   /** Leaf-first list with the full path, so the picker is unambiguous. */
   categories: { id: string; label: string; specSchema: SpecDefinition[] }[];
   media: { id: string; url: string; title: string; isImage: boolean }[];
@@ -413,7 +475,7 @@ export async function getProductFormOptions(): Promise<ProductFormOptions> {
   await connectToDatabase();
 
   const [brands, categories, media] = await Promise.all([
-    Brand.find({}).sort({ order: 1 }).select("name").lean(),
+    Brand.find({}).sort({ order: 1 }).select("name isActive").lean(),
     getAllCategories(),
     MediaAsset.find({}).sort({ createdAt: -1 }).limit(200).lean(),
   ]);
@@ -433,7 +495,7 @@ export async function getProductFormOptions(): Promise<ProductFormOptions> {
   );
 
   return {
-    brands: brands.map((b) => ({ id: String(b._id), name: b.name })),
+    brands: brands.map((b) => ({ id: String(b._id), name: b.name, isActive: b.isActive ?? true })),
     categories: withSchema.sort((a, b) => a.label.localeCompare(b.label)),
     media: media.map((m) => ({
       id: String(m._id),
