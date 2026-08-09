@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
-    "set-role": "tsx scripts/set-role.ts"
+    "set-role": "tsx scripts/set-role.ts",
+    "verify:settings": "tsx scripts/verify-settings.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
