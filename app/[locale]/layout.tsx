@@ -1,21 +1,18 @@
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { JetBrains_Mono, Manrope, Noto_Sans_Georgian } from "next/font/google";
+import { JetBrains_Mono, Noto_Sans_Georgian } from "next/font/google";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
+import { SettingsStyle } from "@/components/layout/settings-style";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { routing } from "@/i18n/routing";
+import { getSiteSettings } from "@/lib/queries/settings";
+import { fontClassNames } from "@/lib/settings/fonts";
 import type { Locale } from "@/lib/types";
 
 import "../globals.css";
-
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin", "cyrillic"],
-  display: "swap",
-});
 
 // Manrope has no Mkhedruli coverage, so Georgian glyphs fall through to this
 // face via the font stack in globals.css rather than a locale switch.
@@ -111,17 +108,24 @@ export default async function LocaleLayout({
   // Opts this layout's subtree into static rendering for the resolved locale.
   setRequestLocale(locale);
 
+  // Never throws: on any failure it returns the defaults, because an error here
+  // would take down every page rather than one component.
+  const settings = await getSiteSettings();
+
   return (
     <html
       lang={locale}
-      className={`${manrope.variable} ${notoGeorgian.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${fontClassNames()} ${notoGeorgian.variable} ${jetbrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <SettingsStyle settings={settings} />
+      </head>
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider>
-          <SiteHeader locale={locale as Locale} />
+          <SiteHeader locale={locale as Locale} settings={settings} />
           <main className="flex-1">{children}</main>
-          <SiteFooter locale={locale as Locale} />
+          <SiteFooter locale={locale as Locale} settings={settings} />
         </NextIntlClientProvider>
       </body>
     </html>
