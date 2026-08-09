@@ -3,6 +3,7 @@ import type { Types } from "mongoose";
 import type {
   Brand,
   Category,
+  HeroSlide,
   LocalizedString,
   Product,
   ProductImage,
@@ -54,6 +55,30 @@ export function toBrand(doc: LeanBrand): Brand {
     slug: doc.slug,
     name: doc.name,
     description: optionalLocalized(doc.description),
+    order: doc.order ?? 0,
+    isActive: doc.isActive ?? true,
+  };
+}
+
+type LeanHeroSlide = {
+  _id: Id;
+  image: string;
+  alt?: LeanLocalized;
+  href?: string | null;
+  width?: number | null;
+  height?: number | null;
+  order?: number;
+  isActive?: boolean;
+};
+
+export function toHeroSlide(doc: LeanHeroSlide): HeroSlide {
+  return {
+    id: idToString(doc._id),
+    image: doc.image,
+    alt: localized(doc.alt),
+    href: doc.href?.trim() || undefined,
+    width: doc.width ?? undefined,
+    height: doc.height ?? undefined,
     order: doc.order ?? 0,
     isActive: doc.isActive ?? true,
   };
