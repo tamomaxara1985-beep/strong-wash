@@ -15,7 +15,7 @@ import {
   type SpecDefinition,
   type SpecFacet,
 } from "../types";
-import { getAllBrands } from "./brands";
+import { getAllBrands, getAllBrandsIncludingInactive } from "./brands";
 import { getCategoryBySlug, getEffectiveSpecSchema, getSubtreeIds } from "./categories";
 import { toProduct } from "./map";
 
@@ -278,6 +278,9 @@ export async function queryProducts(
 
   const pageSize = query.pageSize > 0 ? query.pageSize : DEFAULT_PAGE_SIZE;
   const brands = await getAllBrands();
+  // Filters and facets use the active list above; labels use every brand, so a
+  // hidden manufacturer still prints its name on the cards that reference it.
+  const allBrands = await getAllBrandsIncludingInactive();
   const { base, dimensions, unsatisfiable } = await buildFilters(query, brands);
   if (unsatisfiable) return emptyResult(query, pageSize);
 
@@ -340,7 +343,7 @@ export async function queryProducts(
   const merged: FacetResult = {};
   for (const { row } of results) Object.assign(merged, row);
 
-  const brandById = new Map(brands.map((b) => [b.id, b]));
+  const brandById = new Map(allBrands.map((b) => [b.id, b]));
   const withBrand = (rows: unknown[]): Product[] =>
     rows.map((row) => {
       const product = toProduct(row as Parameters<typeof toProduct>[0]);
@@ -385,7 +388,7 @@ export async function queryProducts(
 }
 
 async function denormalise(rows: unknown[]): Promise<Product[]> {
-  const brands = await getAllBrands();
+  const brands = await getAllBrandsIncludingInactive();
   const brandById = new Map(brands.map((b) => [b.id, b]));
   return rows.map((row) => {
     const product = toProduct(row as Parameters<typeof toProduct>[0]);
