@@ -83,6 +83,12 @@ async function main() {
       effectivePrice: 100,
       searchText: { ka: "Verify Alpha", en: "Verify Alpha", ru: "Verify Alpha" },
       specs: [],
+      // Inactive: the model defaults to `true`, which would put this image-less
+      // fixture live in the real catalogue for the duration of the script (and
+      // permanently, if it is interrupted before `cleanup()` runs). Nothing below
+      // needs it storefront-visible — `canDelete`, `repairBrandSearchText` and
+      // `listAdminBrands`'s count all query without an `isActive` filter.
+      isActive: false,
     });
 
     const blocked = await canDelete(brand._id);
@@ -109,6 +115,41 @@ async function main() {
     check(
       "but present in the unfiltered one, so its products keep a name",
       all.some((b) => b.slug === `${PREFIX}alpha`),
+    );
+
+    // Checks 14-15 above assert on getAllBrands/getAllBrandsIncludingInactive
+    // directly, never on a consumer — which is exactly how a consumer that still
+    // held the active-only list (lib/queries/account.ts's getSavedProducts) went
+    // unnoticed. Exercise a real consumer instead, with the brand still hidden.
+    //
+    // getProductBySlug filters on `isActive: true`, so the isActive:false fixture
+    // from fix 1 above is unfindable by this query by design — reusing it would
+    // make the check vacuous, not convenient. This uses a second, dedicated
+    // fixture instead: active only for this one lookup, given a real `images`
+    // entry so a copy left behind by an interrupted run cannot 500 a search page
+    // the way finding 1 described, and created last so its live window, between
+    // this line and `cleanup()`, is as short as the script gets.
+    const { getProductBySlug } = await import("../lib/queries/products");
+    await Product.create({
+      sku: `${PREFIX}sku-2`,
+      slug: `${PREFIX}product-2`,
+      name: { ka: "სატესტო 2", en: "Verify Machine 2", ru: "Тест 2" },
+      shortDescription: { ka: "ა", en: "b", ru: "в" },
+      description: { ka: "ა", en: "b", ru: "в" },
+      brand: brand._id,
+      category: category._id,
+      categoryAncestors: [category._id],
+      price: 100,
+      effectivePrice: 100,
+      images: [{ url: "https://example.com/zzz-verify.jpg", alt: { ka: "ა", en: "a", ru: "а" } }],
+      specs: [],
+      isActive: true,
+    });
+
+    const viaBySlug = await getProductBySlug(`${PREFIX}product-2`);
+    check(
+      "a product on a hidden brand still gets a brandName from getProductBySlug",
+      Boolean(viaBySlug?.brandName),
     );
   } finally {
     await cleanup();

@@ -35,9 +35,11 @@ const localized = (value: { ka?: string | null; en?: string | null; ru?: string 
  *
  * `searchText` is a denormalised per-locale haystack containing the brand name
  * (`lib/products/write.ts`), written once at product save and never recomputed.
- * Without this pass a rename leaves the lexical search and `/api/search/suggest`
- * matching a manufacturer that no longer exists and missing the one that does,
- * with nothing failing loudly.
+ * It is read in exactly one place: the `q` branch of `buildFilters` in
+ * `lib/queries/products.ts`, i.e. `/search?q=`. (`/api/search/suggest` matches on
+ * `sku` and `name.*` only, so a stale `searchText` does not affect it.) Without
+ * this pass a rename leaves that search matching a manufacturer that no longer
+ * exists and missing the one that does, with nothing failing loudly.
  */
 export async function repairBrandSearchText(
   id: Types.ObjectId,

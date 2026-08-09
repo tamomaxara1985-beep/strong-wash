@@ -25,10 +25,15 @@ export const getAllBrandsIncludingInactive = cache(async (): Promise<Brand[]> =>
   return docs.map(toBrand);
 });
 
+// Unused today (the same-named functions in lib/mock/brands.ts are a different
+// module), but "resolve a brand" is exactly the job that must not go blank when
+// the brand is hidden, so both read the unfiltered list rather than the
+// active-only `getAllBrands`.
+
 export async function getBrandBySlug(slug: string): Promise<Brand | undefined> {
-  return (await getAllBrands()).find((b) => b.slug === slug);
+  return (await getAllBrandsIncludingInactive()).find((b) => b.slug === slug);
 }
 
 export async function getBrandById(id: string): Promise<Brand | undefined> {
-  return (await getAllBrands()).find((b) => b.id === id);
+  return (await getAllBrandsIncludingInactive()).find((b) => b.id === id);
 }

@@ -11,12 +11,22 @@ import { connectToDatabase } from "@/lib/db";
 import { Brand } from "@/lib/models/brand";
 
 /**
- * Updates a brand, repairing its products when the name changes.
+ * Updates a brand, then unconditionally repairs its products' `searchText`.
  *
  * The repair is the reason this is not a plain `$set`: every product stores the
  * brand name inside `searchText`, so a rename without it leaves the search
  * matching a manufacturer that no longer exists. A slug change needs nothing —
  * product slugs are resolved live, never stored on the product.
+ *
+ * It runs on every successful save, not only when the name changed. Gating it on
+ * a `renamed` check made a failed repair unretryable: if `repairBrandSearchText`
+ * threw, the rename was already committed, the handler returned 500, and a retry
+ * saw an unchanged name and skipped the repair — leaving the catalogue
+ * permanently mis-indexed. `repairBrandSearchText` rebuilds each product's
+ * haystack from that product's own stored fields plus the current brand name, so
+ * it is idempotent: a no-op rename costs one harmless pass and a retry after a
+ * partial `bulkWrite` heals it. `modifiedCount` still reports 0 when nothing
+ * changed, which is what the form keys `Reindexed N products.` on.
  */
 export async function PATCH(request: NextRequest, context: RouteContext<"/api/admin/brands/[id]">) {
   const rejected = assertSameOrigin(request);
@@ -41,8 +51,6 @@ export async function PATCH(request: NextRequest, context: RouteContext<"/api/ad
       .lean();
     if (clash) return validationError({ slug: "taken" });
 
-    const renamed = brand.name !== parsed.data.name;
-
     brand.slug = parsed.data.slug;
     brand.name = parsed.data.name;
     brand.description = normaliseDescription(parsed.data.description);
@@ -50,7 +58,7 @@ export async function PATCH(request: NextRequest, context: RouteContext<"/api/ad
     brand.isActive = parsed.data.isActive;
     await brand.save();
 
-    const repaired = renamed ? await repairBrandSearchText(brand._id, brand.name) : 0;
+    const repaired = await repairBrandSearchText(brand._id, brand.name);
 
     return NextResponse.json({ id: String(brand._id), repaired });
   } catch (error) {
