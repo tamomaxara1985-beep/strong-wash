@@ -62,8 +62,12 @@ async function main() {
     check("black on white is the maximum", Math.round(contrastRatio("#000000", "#ffffff")) === 21);
     check("contrast is symmetric", contrastRatio("#fec303", "#101010") === contrastRatio("#101010", "#fec303"));
     check("darkening moves toward black", shade("#fec303", -0.12) < "#fec303");
-    check("the derived light shade is close to the hand-tuned one", derivedShades("#fec303").light.startsWith("#e0"));
-    check("the derived dark shade is lighter than the source", derivedShades("#fec303").dark > "#fec303");
+    check("the derived light shade is exactly what the current weight produces", derivedShades("#fec303").light === "#e0ac03");
+    check("the derived dark shade is exactly what the current weight produces", derivedShades("#fec303").dark === "#fecd2b");
+    check(
+      "a channel swap in shade()'s return template would be caught: pure red stays red",
+      derivedShades("#ff0000").light === "#e00000",
+    );
 
     for (const bad of ["red", "#ff0", "#GGGGGG", "#fff);body{display:none", "fec303"]) {
       check(`the hex regex refuses ${JSON.stringify(bad)}`, !HEX.test(bad));
