@@ -125,10 +125,10 @@ async function main() {
     // getProductBySlug filters on `isActive: true`, so the isActive:false fixture
     // from fix 1 above is unfindable by this query by design — reusing it would
     // make the check vacuous, not convenient. This uses a second, dedicated
-    // fixture instead: active only for this one lookup, given a real `images`
-    // entry so a copy left behind by an interrupted run cannot 500 a search page
-    // the way finding 1 described, and created last so its live window, between
-    // this line and `cleanup()`, is as short as the script gets.
+    // fixture instead: active only for this one lookup, with a local placeholder
+    // image so a copy left behind by an interrupted run degrades to a broken image
+    // rather than throwing during render, and created last so its live window,
+    // between this line and `cleanup()`, is as short as the script gets.
     const { getProductBySlug } = await import("../lib/queries/products");
     await Product.create({
       sku: `${PREFIX}sku-2`,
@@ -141,7 +141,7 @@ async function main() {
       categoryAncestors: [category._id],
       price: 100,
       effectivePrice: 100,
-      images: [{ url: "https://example.com/zzz-verify.jpg", alt: { ka: "ა", en: "a", ru: "а" } }],
+      images: [{ url: "/placeholders/bay-1.svg", alt: { ka: "ა", en: "a", ru: "а" } }],
       specs: [],
       isActive: true,
     });
