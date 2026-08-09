@@ -16,9 +16,9 @@
      fallback for glyphs the two webfonts lack. The lari sign is *not* covered
      by any of them, which is why it is drawn rather than typed — see
      `components/ui/lari.tsx`. */
-  --font-sans: var(--font-manrope), var(--font-noto-georgian), "Segoe UI", Sylfaen,
+  --font-sans: var(--font-body), var(--font-noto-georgian), "Segoe UI", Sylfaen,
     "Noto Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-manrope), var(--font-noto-georgian), "Segoe UI", Sylfaen,
+  --font-heading: var(--font-body), var(--font-noto-georgian), "Segoe UI", Sylfaen,
     "Noto Sans", ui-sans-serif, system-ui, sans-serif;
   /* Spec values, SKUs and prices are numerals + Latin units, so a mono face is
      safe — with the same lari-sign fallbacks appended. */
@@ -85,6 +85,12 @@
   --brand-yellow-dark: #e0a800;
   --brand-black: #010101;
 
+  /* The face the admin picks. Indirection, not decoration: the utilities above
+     inline this variable's *reference*, so a runtime override of --font-body
+     reaches every `font-sans` and `font-heading` utility without rebuilding.
+     Defaults to Manrope, which is what the site shipped with. */
+  --font-body: var(--font-manrope);
+
   --background: #f6f6f4;
   --foreground: #101010;
   --card: #ffffff;
@@ -108,10 +114,10 @@
   --input: #e3e2dc;
   --ring: #101010;
 
-  --chart-1: #fec303;
+  --chart-1: var(--brand-yellow);
   --chart-2: #101010;
   --chart-3: #8a8a84;
-  --chart-4: #e0a800;
+  --chart-4: var(--brand-yellow-dark);
   --chart-5: #5f5f5a;
 
   --radius: 0.25rem;
@@ -130,7 +136,7 @@
   --foam: #fff3cc;
   /* Discount is the brand yellow with black text — the highest-contrast pair
      in the palette, and unmistakably this brand. */
-  --sale: #fec303;
+  --sale: var(--brand-yellow);
   --sale-foreground: #101010;
   --stock-in: #1a7f42;
   --stock-low: #9a6300;
@@ -151,7 +157,7 @@
 
   /* On dark surfaces yellow becomes the primary action colour, still with
      black text on top. */
-  --primary: #fec303;
+  --primary: var(--brand-yellow);
   --primary-foreground: #101010;
   --secondary: #232321;
   --secondary-foreground: #f4f3ef;
@@ -162,27 +168,27 @@
   --destructive: #e5544b;
   --border: oklch(1 0 0 / 14%);
   --input: oklch(1 0 0 / 18%);
-  --ring: #fec303;
+  --ring: var(--brand-yellow);
 
-  --chart-1: #fec303;
+  --chart-1: var(--brand-yellow);
   --chart-2: #f4f3ef;
   --chart-3: #a5a49d;
-  --chart-4: #ffd23f;
+  --chart-4: var(--brand-yellow-dark);
   --chart-5: #6e6e68;
 
   --sidebar: #171716;
   --sidebar-foreground: #f4f3ef;
-  --sidebar-primary: #fec303;
+  --sidebar-primary: var(--brand-yellow);
   --sidebar-primary-foreground: #101010;
   --sidebar-accent: #232321;
   --sidebar-accent-foreground: #f4f3ef;
   --sidebar-border: oklch(1 0 0 / 14%);
-  --sidebar-ring: #fec303;
+  --sidebar-ring: var(--brand-yellow);
 
   --ink: #f4f3ef;
   --ink-soft: #d8d7d1;
   --foam: #232321;
-  --sale: #fec303;
+  --sale: var(--brand-yellow);
   --sale-foreground: #101010;
   --stock-in: #48c47a;
   --stock-low: #e0b354;

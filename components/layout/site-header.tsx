@@ -14,11 +14,16 @@ import { getSession } from "@/lib/auth/session";
 import { pickLocale } from "@/lib/localized";
 import { getCategoryTree } from "@/lib/queries/categories";
 import { countProductsPerCategory } from "@/lib/queries/products";
+import type { ResolvedSettings } from "@/lib/settings/defaults";
 import type { Locale } from "@/lib/types";
 
-const PHONE = "+995 322 40 40 40";
-
-export async function SiteHeader({ locale }: { locale: Locale }) {
+export async function SiteHeader({
+  locale,
+  settings,
+}: {
+  locale: Locale;
+  settings: ResolvedSettings;
+}) {
   const t = await getTranslations();
 
   const [tree, counts, session] = await Promise.all([
@@ -60,11 +65,11 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               {t("nav.stores")}
             </Link>
             <a
-              href={`tel:${PHONE.replace(/\s/g, "")}`}
+              href={`tel:${settings.phone.replace(/\s/g, "")}`}
               className="text-data inline-flex items-center gap-1.5 font-semibold text-white/90 transition-colors hover:text-white"
             >
               <Phone aria-hidden className="size-3.5" />
-              {PHONE}
+              {settings.phone}
             </a>
             <LocaleSwitcher className="text-white hover:bg-white/10" />
           </div>
@@ -73,7 +78,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
 
       {/* Main bar — white, so the two-colour logo is used exactly as supplied. */}
       <div className="container-page flex h-16 items-center gap-3">
-        <MobileNav categories={navCategories} phone={PHONE} signedIn={Boolean(session)} />
+        <MobileNav categories={navCategories} phone={settings.phone} signedIn={Boolean(session)} />
 
         <Link
           href="/"

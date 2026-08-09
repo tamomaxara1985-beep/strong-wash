@@ -1,4 +1,13 @@
-import { Factory, FileImage, FolderTree, LayoutDashboard, Package, Paperclip, Users } from "lucide-react";
+import {
+  Factory,
+  FileImage,
+  FolderTree,
+  LayoutDashboard,
+  Package,
+  Paperclip,
+  Settings,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -28,6 +37,7 @@ const NAV = [
   { href: "/admin/media", label: "Media library", icon: FileImage },
   { href: "/admin/attachments", label: "Quote attachments", icon: Paperclip },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/settings", label: "Site settings", icon: Settings },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
