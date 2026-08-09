@@ -71,6 +71,27 @@ async function main() {
     const none = (await import("../lib/queries/slides")).getHeroSlides;
     const empty = (await none()).filter((s) => s.alt.ka.includes(MARKER));
     check("with none active the query returns an empty list", empty.length === 0);
+
+    const { isCloudinaryImageUrl, isSiteRelativePath } = await import("../lib/slides/validate");
+
+    check(
+      "a cloudinary delivery url is accepted",
+      isCloudinaryImageUrl("https://res.cloudinary.com/hva1f8dq/image/upload/v1/a.jpg"),
+    );
+    for (const bad of [
+      "https://evil.example/a.jpg",
+      "http://res.cloudinary.com/hva1f8dq/a.jpg",
+      "/local/a.jpg",
+      "javascript:alert(1)",
+      "",
+    ]) {
+      check(`the image rule refuses ${JSON.stringify(bad)}`, !isCloudinaryImageUrl(bad));
+    }
+
+    check("a relative path is accepted", isSiteRelativePath("/c/sand-washing"));
+    for (const bad of ["https://evil.example", "//evil.example", "javascript:alert(1)", "c/x", ""]) {
+      check(`the href rule refuses ${JSON.stringify(bad)}`, !isSiteRelativePath(bad));
+    }
   } finally {
     await cleanup();
     await mongoose.disconnect();
