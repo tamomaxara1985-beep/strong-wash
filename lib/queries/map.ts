@@ -11,6 +11,7 @@ import type {
   ProductSpec,
   SpecDefinition,
   StockStatus,
+  StoreLocation,
 } from "../types";
 
 /**
@@ -85,6 +86,32 @@ export function toHeroSlide(doc: LeanHeroSlide): HeroSlide {
     href: href && isSiteRelativePath(href) ? href : undefined,
     width: doc.width ?? undefined,
     height: doc.height ?? undefined,
+    order: doc.order ?? 0,
+    isActive: doc.isActive ?? true,
+  };
+}
+
+type LeanStoreLocation = {
+  _id: Id;
+  name?: LeanLocalized;
+  phone: string;
+  email?: string | null;
+  address?: LeanLocalized;
+  workHours?: LeanLocalized;
+  mapUrl?: string | null;
+  order?: number;
+  isActive?: boolean;
+};
+
+export function toStoreLocation(doc: LeanStoreLocation): StoreLocation {
+  return {
+    id: idToString(doc._id),
+    name: localized(doc.name),
+    phone: doc.phone,
+    email: doc.email?.trim() || undefined,
+    address: localized(doc.address),
+    workHours: localized(doc.workHours),
+    mapUrl: doc.mapUrl?.trim() || undefined,
     order: doc.order ?? 0,
     isActive: doc.isActive ?? true,
   };
