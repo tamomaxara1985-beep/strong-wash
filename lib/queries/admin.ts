@@ -7,6 +7,7 @@ import { HeroSlide } from "../models/hero-slide";
 import { MediaAsset } from "../models/media-asset";
 import { Product } from "../models/product";
 import { QuoteRequest } from "../models/quote-request";
+import { StoreLocation } from "../models/store-location";
 import { User } from "../models/user";
 import type { LocalizedString, SpecDefinition } from "../types";
 import { getAllCategories, getEffectiveSpecSchema } from "./categories";
@@ -380,6 +381,57 @@ export async function getSlideFormOptions(): Promise<{
       height: asset.height ?? undefined,
     })),
   };
+}
+
+export type AdminLocationRow = {
+  id: string;
+  name: LocalizedString;
+  phone: string;
+  email?: string;
+  address: LocalizedString;
+  workHours: LocalizedString;
+  mapUrl?: string;
+  order: number;
+  isActive: boolean;
+};
+
+/**
+ * Every branch, inactive ones included: the storefront hides those, which is
+ * exactly why the panel has to show them.
+ */
+export async function listAdminLocations(): Promise<AdminLocationRow[]> {
+  await connectToDatabase();
+  const docs = await StoreLocation.find({}).sort({ order: 1 }).lean();
+
+  return docs.map((doc) => ({
+    id: String(doc._id),
+    name: {
+      ka: doc.name?.ka ?? "",
+      en: doc.name?.en ?? undefined,
+      ru: doc.name?.ru ?? undefined,
+    },
+    phone: doc.phone,
+    email: doc.email?.trim() || undefined,
+    address: {
+      ka: doc.address?.ka ?? "",
+      en: doc.address?.en ?? undefined,
+      ru: doc.address?.ru ?? undefined,
+    },
+    workHours: {
+      ka: doc.workHours?.ka ?? "",
+      en: doc.workHours?.en ?? undefined,
+      ru: doc.workHours?.ru ?? undefined,
+    },
+    mapUrl: doc.mapUrl?.trim() || undefined,
+    order: doc.order ?? 0,
+    isActive: doc.isActive ?? true,
+  }));
+}
+
+export async function getAdminLocation(id: string): Promise<AdminLocationRow | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  const all = await listAdminLocations();
+  return all.find((row) => row.id === id) ?? null;
 }
 
 export type AdminProductRow = {
