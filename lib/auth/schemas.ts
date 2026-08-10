@@ -219,6 +219,34 @@ export const settingsSchema = z.object({
   fontKey: z.string().trim().max(40).optional().or(z.literal("")),
 });
 
+/**
+ * `alt` is `localizedRequired`, so Georgian alt text cannot be empty: the banner
+ * carries its message inside the artwork, and alt is all a screen reader or a
+ * crawler ever sees.
+ *
+ * The image and href rules are enforced in the route handler rather than here,
+ * because both depend on runtime configuration and both need to report a
+ * specific field code the form renders.
+ */
+export const slideSchema = z.object({
+  image: z.string().trim().min(1, "required").max(500),
+  alt: localizedRequired,
+  href: z.string().trim().max(200).optional().or(z.literal("")),
+  width: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.coerce.number().int().min(1).max(20000).optional(),
+  ),
+  height: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.coerce.number().int().min(1).max(20000).optional(),
+  ),
+  order: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 0 : value),
+    z.coerce.number().int().min(0).max(9999),
+  ),
+  isActive: z.boolean().default(true),
+});
+
 /** Flattens Zod issues into the `{field: code}` shape the API contract uses. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const fields: Record<string, string> = {};

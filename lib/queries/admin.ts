@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { connectToDatabase } from "../db";
 import { Brand } from "../models/brand";
 import { Category } from "../models/category";
+import { HeroSlide } from "../models/hero-slide";
 import { MediaAsset } from "../models/media-asset";
 import { Product } from "../models/product";
 import { QuoteRequest } from "../models/quote-request";
@@ -311,6 +312,74 @@ export async function getAdminBrand(id: string): Promise<AdminBrandRow | null> {
   if (!Types.ObjectId.isValid(id)) return null;
   const all = await listAdminBrands();
   return all.find((row) => row.id === id) ?? null;
+}
+
+export type AdminSlideRow = {
+  id: string;
+  image: string;
+  alt: LocalizedString;
+  href?: string;
+  width?: number;
+  height?: number;
+  order: number;
+  isActive: boolean;
+};
+
+/**
+ * Every slide, inactive ones included: the storefront hides those, which is
+ * exactly why the panel has to show them.
+ */
+export async function listAdminSlides(): Promise<AdminSlideRow[]> {
+  await connectToDatabase();
+  const docs = await HeroSlide.find({}).sort({ order: 1 }).lean();
+
+  return docs.map((doc) => ({
+    id: String(doc._id),
+    image: doc.image,
+    alt: {
+      ka: doc.alt?.ka ?? "",
+      en: doc.alt?.en ?? undefined,
+      ru: doc.alt?.ru ?? undefined,
+    },
+    href: doc.href?.trim() || undefined,
+    width: doc.width ?? undefined,
+    height: doc.height ?? undefined,
+    order: doc.order ?? 0,
+    isActive: doc.isActive ?? true,
+  }));
+}
+
+export async function getAdminSlide(id: string): Promise<AdminSlideRow | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  const all = await listAdminSlides();
+  return all.find((row) => row.id === id) ?? null;
+}
+
+/**
+ * Images the slide form can choose from.
+ *
+ * Separate from `getProductFormOptions` because a slide needs the intrinsic
+ * dimensions, which the product picker does not carry, and needs none of the
+ * categories or spec schemas that make that read expensive.
+ */
+export async function getSlideFormOptions(): Promise<{
+  media: { id: string; url: string; title: string; width?: number; height?: number }[];
+}> {
+  await connectToDatabase();
+  const assets = await MediaAsset.find({ resourceType: "image" })
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .lean();
+
+  return {
+    media: assets.map((asset) => ({
+      id: String(asset._id),
+      url: asset.url,
+      title: asset.title,
+      width: asset.width ?? undefined,
+      height: asset.height ?? undefined,
+    })),
+  };
 }
 
 export type AdminProductRow = {

@@ -37,6 +37,17 @@ export type Brand = {
   isActive: boolean;
 };
 
+export type HeroSlide = {
+  id: string;
+  image: string;
+  alt: LocalizedString;
+  href?: string;
+  width?: number;
+  height?: number;
+  order: number;
+  isActive: boolean;
+};
+
 export type Category = {
   id: string;
   slug: string;

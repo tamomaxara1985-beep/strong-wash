@@ -2,6 +2,7 @@ import {
   Factory,
   FileImage,
   FolderTree,
+  GalleryHorizontal,
   LayoutDashboard,
   Package,
   Paperclip,
@@ -31,6 +32,7 @@ export const metadata: Metadata = {
  */
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/slides", label: "Homepage banners", icon: GalleryHorizontal },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/brands", label: "Brands", icon: Factory },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },

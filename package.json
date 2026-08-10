@@ -10,7 +10,8 @@
     "seed": "tsx scripts/seed.ts",
     "set-role": "tsx scripts/set-role.ts",
     "verify:brands": "tsx scripts/verify-brands.ts",
-    "verify:settings": "tsx scripts/verify-settings.ts"
+    "verify:settings": "tsx scripts/verify-settings.ts",
+    "verify:slides": "tsx scripts/verify-slides.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
