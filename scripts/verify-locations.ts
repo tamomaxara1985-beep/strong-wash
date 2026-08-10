@@ -73,6 +73,29 @@ async function main() {
     check("reordering changes which is primary", reordered.name.ka.endsWith("second"));
 
     check("an unset en stays unset, for pickLocale to resolve", list[0]?.name.en === undefined);
+
+    const { isMapUrl } = await import("../lib/locations/validate");
+
+    for (const good of [
+      "https://maps.google.com/?q=41.7,44.8",
+      "https://www.google.com/maps/place/Tbilisi",
+      "https://goo.gl/maps/abc",
+      "https://maps.app.goo.gl/abc",
+    ]) {
+      check(`the map rule accepts ${JSON.stringify(good)}`, isMapUrl(good));
+    }
+
+    for (const bad of [
+      "http://maps.google.com/?q=1",
+      "https://evil.example/maps",
+      "https://google.com.evil.example/",
+      "https://notgoogle.com/maps",
+      "javascript:alert(1)",
+      "maps.google.com",
+      "",
+    ]) {
+      check(`the map rule refuses ${JSON.stringify(bad)}`, !isMapUrl(bad));
+    }
   } finally {
     await cleanup();
     await mongoose.disconnect();
