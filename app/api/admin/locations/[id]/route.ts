@@ -34,6 +34,20 @@ export async function PATCH(
     const location = await StoreLocation.findById(id);
     if (!location) return notFoundJson("location");
 
+    // Untying "Active" is another sanctioned way to reach zero active branches:
+    // with none left, every consumer falls back to DEFAULT_LOCATION, silently
+    // restoring the built-in contact details to every page. Refuse it the same
+    // way DELETE refuses removing the last active branch.
+    if (parsed.data.isActive === false) {
+      const otherActive = await StoreLocation.countDocuments({
+        isActive: true,
+        _id: { $ne: location._id },
+      });
+      if (otherActive === 0) {
+        return NextResponse.json({ error: "last_active_location" }, { status: 409 });
+      }
+    }
+
     location.name = parsed.data.name;
     location.phone = parsed.data.phone;
     location.email = parsed.data.email || undefined;
@@ -51,12 +65,13 @@ export async function PATCH(
 }
 
 /**
- * Deletes a branch, unless it is the only one.
+ * Deletes a branch, unless doing so would leave zero rows or zero active rows.
  *
- * With none stored every consumer falls back to the built-in default, so deleting
- * the last branch would silently restore the address the site shipped with — no
- * error, no empty state, just the wrong telephone number back on every page. The
- * refusal names the alternative.
+ * With none stored — or none active — every consumer falls back to the built-in
+ * default, so deleting the last branch, or the last *active* one while an
+ * inactive row survives, would silently restore the address the site shipped
+ * with — no error, no empty state, just the wrong telephone number back on every
+ * page. Each refusal names the alternative.
  */
 export async function DELETE(
   request: NextRequest,
@@ -73,7 +88,7 @@ export async function DELETE(
     if (!Types.ObjectId.isValid(id)) return notFoundJson("location");
 
     await connectToDatabase();
-    const location = await StoreLocation.findById(id).select("_id");
+    const location = await StoreLocation.findById(id).select("_id isActive");
     if (!location) return notFoundJson("location");
 
     // Counts every branch, active or not: an inactive one is still a row the
@@ -82,6 +97,20 @@ export async function DELETE(
     const total = await StoreLocation.countDocuments({});
     if (total <= 1) {
       return NextResponse.json({ error: "last_location" }, { status: 409 });
+    }
+
+    // The row count guard above is not enough: the site depends on the ACTIVE
+    // count, and deleting the only active branch succeeds under that guard
+    // whenever an inactive row also exists. Refuse that too, with a distinct
+    // code so the two refusals read differently.
+    if (location.isActive) {
+      const otherActive = await StoreLocation.countDocuments({
+        isActive: true,
+        _id: { $ne: location._id },
+      });
+      if (otherActive === 0) {
+        return NextResponse.json({ error: "last_active_location" }, { status: 409 });
+      }
     }
 
     await location.deleteOne();

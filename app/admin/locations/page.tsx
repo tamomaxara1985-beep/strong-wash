@@ -48,7 +48,7 @@ export default async function AdminLocationsPage() {
                     href={`/admin/locations/${location.id}`}
                     className="font-medium hover:underline"
                   >
-                    {location.name.en ?? location.name.ka}
+                    {location.name.en || location.name.ka}
                   </Link>
                   {index === 0 && location.isActive ? (
                     <span className="text-muted-foreground ml-2 text-xs">primary</span>
@@ -67,7 +67,7 @@ export default async function AdminLocationsPage() {
                 <td className="px-3 py-2">
                   <LocationRowActions
                     id={location.id}
-                    name={location.name.en ?? location.name.ka}
+                    name={location.name.en || location.name.ka}
                   />
                 </td>
               </tr>

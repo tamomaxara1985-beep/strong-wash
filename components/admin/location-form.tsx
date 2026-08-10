@@ -20,6 +20,8 @@ function messageFor(code: string): string {
       return "Required.";
     case "map_host":
       return `Google Maps links only — ${MAP_HOSTS.join(", ")}.`;
+    case "last_active_location":
+      return "This is the only branch currently shown on the site. Activate another branch first, then this one can be unticked.";
     default:
       return "Invalid.";
   }
@@ -107,6 +109,7 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
 
       const body = (await response.json().catch(() => ({}))) as {
         fields?: Record<string, string>;
+        error?: string;
       };
       if (body.fields) {
         setFields(body.fields);
@@ -120,6 +123,8 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
             ? `Some fields need attention — switched to ${offending.toUpperCase()}.`
             : "Some fields need attention.",
         );
+      } else if (body.error === "last_active_location") {
+        setError(messageFor(body.error));
       } else {
         setError("That did not save. Please try again.");
       }

@@ -15,7 +15,7 @@ export default async function EditLocationPage({ params }: PageProps<"/admin/loc
         <Link href="/admin/locations" className="text-muted-foreground text-sm hover:underline">
           ← Locations
         </Link>
-        <h1 className="text-display mt-1 text-2xl">{location.name.en ?? location.name.ka}</h1>
+        <h1 className="text-display mt-1 text-2xl">{location.name.en || location.name.ka}</h1>
         <p className="text-data text-muted-foreground mt-1 text-sm">{location.phone}</p>
       </header>
 

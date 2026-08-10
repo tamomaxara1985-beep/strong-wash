@@ -1,5 +1,7 @@
 import type { Types } from "mongoose";
 
+import { DEFAULT_LOCATION } from "../locations/defaults";
+import { isMapUrl } from "../locations/validate";
 import { isSiteRelativePath } from "../slides/validate";
 import type {
   Brand,
@@ -104,14 +106,19 @@ type LeanStoreLocation = {
 };
 
 export function toStoreLocation(doc: LeanStoreLocation): StoreLocation {
+  const mapUrl = doc.mapUrl?.trim();
   return {
     id: idToString(doc._id),
     name: localized(doc.name),
-    phone: doc.phone,
+    phone: doc.phone?.trim() || DEFAULT_LOCATION.phone,
     email: doc.email?.trim() || undefined,
     address: localized(doc.address),
     workHours: localized(doc.workHours),
-    mapUrl: doc.mapUrl?.trim() || undefined,
+    // The write handler already checked this, but it cannot vouch for a
+    // document it did not write — a legacy row, an imported dump or a restored
+    // backup can still carry a non-Google host. Re-check here so a bad value
+    // renders as no "Directions" link rather than a live off-site link.
+    mapUrl: mapUrl && isMapUrl(mapUrl) ? mapUrl : undefined,
     order: doc.order ?? 0,
     isActive: doc.isActive ?? true,
   };

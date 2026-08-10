@@ -44,12 +44,33 @@ async function main() {
   try {
     await cleanup();
 
-    const { getLocations, getPrimaryLocation } = await import("../lib/queries/locations");
+    const { getLocations } = await import("../lib/queries/locations");
     const { DEFAULT_LOCATION } = await import("../lib/locations/defaults");
 
+    // Once a real branch is stored (which happens the moment the operator
+    // adds one), `getLocations()` legitimately stops returning the default —
+    // that is the feature working, not a regression. The strict "falls back
+    // to DEFAULT_LOCATION" assertion is therefore only meaningful when the
+    // collection is genuinely empty, which this checks for directly rather
+    // than inferring it from the length of `getLocations()`'s result (the
+    // very thing that broke before: one real active row also has length 1).
+    const realRows = await StoreLocation.countDocuments({
+      "name.ka": { $not: { $regex: MARKER } },
+    });
     const empty = await getLocations();
-    check("with nothing stored the list is the default branch", empty.length === 1);
-    check("and it is DEFAULT_LOCATION", empty[0]?.id === DEFAULT_LOCATION.id);
+    if (realRows === 0) {
+      check("with nothing stored the list is the default branch", empty.length === 1);
+      check("and it is DEFAULT_LOCATION", empty[0]?.id === DEFAULT_LOCATION.id);
+    } else {
+      // Real branches exist, so the default-fallback scenario cannot be
+      // exercised here — but cleanup() having actually removed every marker
+      // row still can be, and the next block's exact-count assertions depend
+      // on it having done so.
+      check(
+        "with real branches already stored, no marker rows leak into the result",
+        !empty.some((l) => l.name.ka.includes(MARKER)),
+      );
+    }
 
     await StoreLocation.create(fixture("second", 20));
     await StoreLocation.create(fixture("first", 10));
@@ -100,11 +121,14 @@ async function main() {
     await cleanup();
     await StoreLocation.create(fixture("only", 10));
 
-    const totalWithOne = await StoreLocation.countDocuments({});
+    // Scoped to the marker: `{}` would count every real branch alongside the
+    // fixture and fail outright the moment one exists.
+    const markerFilter = { "name.ka": { $regex: MARKER } };
+    const totalWithOne = await StoreLocation.countDocuments(markerFilter);
     check("the guard's count sees exactly one branch", totalWithOne === 1);
 
     await StoreLocation.create(fixture("second-branch", 20));
-    const totalWithTwo = await StoreLocation.countDocuments({});
+    const totalWithTwo = await StoreLocation.countDocuments(markerFilter);
     check("and two once another is added", totalWithTwo === 2);
   } finally {
     await cleanup();

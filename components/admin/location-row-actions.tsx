@@ -10,9 +10,10 @@ import { Button } from "@/components/ui/button";
 /**
  * Per-row edit and delete.
  *
- * The server refuses to delete the only branch; this renders that refusal as the
- * thing to do instead, because "cannot delete" without an alternative is where an
- * operator gets stuck.
+ * The server refuses to delete the only branch, and separately refuses to delete
+ * the only *active* one even when an inactive row survives it; this renders each
+ * refusal as the thing to do instead, because "cannot delete" without an
+ * alternative is where an operator gets stuck.
  */
 export function LocationRowActions({ id, name }: { id: string; name: string }) {
   const router = useRouter();
@@ -32,10 +33,12 @@ export function LocationRowActions({ id, name }: { id: string; name: string }) {
       }
 
       const body = (await response.json().catch(() => ({}))) as { error?: string };
-      if (body.error === "last_location") {
+      if (body.error === "last_active_location") {
         setError(
-          "This is your only location, and the site needs one. Add another first, or untick “Active” to take it off the site instead.",
+          "This is the only branch currently shown on the site. Activate another branch first, then this one can be deleted.",
         );
+      } else if (body.error === "last_location") {
+        setError("This is your only location, and the site needs one. Add another first.");
       } else if (body.error === "forbidden" || body.error === "unauthenticated") {
         setError("Your session no longer has admin access. Sign in again.");
       } else {

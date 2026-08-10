@@ -2,7 +2,6 @@ import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Metadata } from "next";
 
-import { SectionHeading } from "@/components/layout/section-heading";
 import { pickLocale } from "@/lib/localized";
 import { getLocations } from "@/lib/queries/locations";
 import type { Locale } from "@/lib/types";
@@ -25,7 +24,9 @@ export default async function LocationsPage({ params }: PageProps<"/[locale]/loc
 
   return (
     <div className="container-page py-12">
-      <SectionHeading title={t("locations.title")} />
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <h1 className="text-display text-xl sm:text-2xl">{t("locations.title")}</h1>
+      </div>
       <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
         {t("locations.intro")}
       </p>
@@ -33,7 +34,7 @@ export default async function LocationsPage({ params }: PageProps<"/[locale]/loc
       <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {locations.map((location) => (
           <li key={location.id} className="bg-card flex flex-col gap-3 rounded-xl border p-5">
-            <h2 className="text-display text-lg">{pickLocale(location.name, typedLocale)}</h2>
+            <h3 className="text-display text-lg">{pickLocale(location.name, typedLocale)}</h3>
 
             <p className="inline-flex items-start gap-2 text-sm">
               <MapPin aria-hidden className="text-muted-foreground mt-0.5 size-4 shrink-0" />
