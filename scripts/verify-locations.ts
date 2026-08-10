@@ -96,6 +96,16 @@ async function main() {
     ]) {
       check(`the map rule refuses ${JSON.stringify(bad)}`, !isMapUrl(bad));
     }
+
+    await cleanup();
+    await StoreLocation.create(fixture("only", 10));
+
+    const totalWithOne = await StoreLocation.countDocuments({});
+    check("the guard's count sees exactly one branch", totalWithOne === 1);
+
+    await StoreLocation.create(fixture("second-branch", 20));
+    const totalWithTwo = await StoreLocation.countDocuments({});
+    check("and two once another is added", totalWithTwo === 2);
   } finally {
     await cleanup();
     await mongoose.disconnect();
