@@ -34,7 +34,7 @@ export default async function LocationsPage({ params }: PageProps<"/[locale]/loc
       <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {locations.map((location) => (
           <li key={location.id} className="bg-card flex flex-col gap-3 rounded-xl border p-5">
-            <h3 className="text-display text-lg">{pickLocale(location.name, typedLocale)}</h3>
+            <h2 className="text-display text-lg">{pickLocale(location.name, typedLocale)}</h2>
 
             <p className="inline-flex items-start gap-2 text-sm">
               <MapPin aria-hidden className="text-muted-foreground mt-0.5 size-4 shrink-0" />

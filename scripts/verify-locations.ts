@@ -118,18 +118,36 @@ async function main() {
       check(`the map rule refuses ${JSON.stringify(bad)}`, !isMapUrl(bad));
     }
 
+    // The PATCH and DELETE active-count guards both run exactly
+    // `countDocuments({ isActive: true, _id: { $ne: <the row being changed> } })`
+    // and refuse when it is 0. This is not exercised by calling the route —
+    // no route is invoked here — it runs the guard's own query directly, the
+    // same way the checks above exercise `getLocations()` and `isMapUrl()`
+    // directly. The HTTP 409 itself is covered by the browser pass.
     await cleanup();
-    await StoreLocation.create(fixture("only", 10));
+    const onlyDoc = await StoreLocation.create(fixture("only", 10));
 
-    // Scoped to the marker: `{}` would count every real branch alongside the
-    // fixture and fail outright the moment one exists.
-    const markerFilter = { "name.ka": { $regex: MARKER } };
-    const totalWithOne = await StoreLocation.countDocuments(markerFilter);
-    check("the guard's count sees exactly one branch", totalWithOne === 1);
+    // Scoped to the marker so this stays correct once real branches exist —
+    // an unscoped query would count every real active branch alongside the
+    // fixture and never reach 0.
+    const otherActiveMarkers = () =>
+      StoreLocation.countDocuments({
+        "name.ka": { $regex: MARKER },
+        isActive: true,
+        _id: { $ne: onlyDoc._id },
+      });
+
+    check(
+      "with one active marker branch, the guard's query finds no others — the condition that makes it refuse",
+      (await otherActiveMarkers()) === 0,
+    );
 
     await StoreLocation.create(fixture("second-branch", 20));
-    const totalWithTwo = await StoreLocation.countDocuments(markerFilter);
-    check("and two once another is added", totalWithTwo === 2);
+
+    check(
+      "and finds one once a second active branch exists — the condition that lets it proceed",
+      (await otherActiveMarkers()) === 1,
+    );
   } finally {
     await cleanup();
     await mongoose.disconnect();

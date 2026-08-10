@@ -38,7 +38,13 @@ export async function PATCH(
     // with none left, every consumer falls back to DEFAULT_LOCATION, silently
     // restoring the built-in contact details to every page. Refuse it the same
     // way DELETE refuses removing the last active branch.
-    if (parsed.data.isActive === false) {
+    //
+    // Gated on the TRANSITION (`location.isActive` was true), not the
+    // submitted value alone: a branch that is already inactive changes
+    // nothing about the active count when saved with isActive still false, and
+    // refusing that save would lock the operator out of editing an already-
+    // hidden branch's address, phone or hours unless they also ticked Active.
+    if (parsed.data.isActive === false && location.isActive) {
       const otherActive = await StoreLocation.countDocuments({
         isActive: true,
         _id: { $ne: location._id },
