@@ -108,10 +108,21 @@ export function SlideForm({
         const localeKey = Object.keys(body.fields).find((key) => /\.(ka|en|ru)$/.test(key));
         const offending = localeKey?.split(".").pop() as Locale | undefined;
         if (offending && offending !== locale) setLocale(offending);
+
+        // "image" and "href" render their own inline message, and a dotted alt
+        // key is handled above by switching to the locale it names. Any other
+        // key — "order", "isActive", a future field — has no field-level
+        // renderer, so it must be named here or the operator sees no clue at all.
+        const unnamed = Object.keys(body.fields).filter(
+          (key) => key !== "image" && key !== "href" && !/\.(ka|en|ru)$/.test(key),
+        );
+
         setError(
-          offending && offending !== locale
-            ? `Some fields need attention — switched to ${offending.toUpperCase()}.`
-            : "Some fields need attention.",
+          unnamed.length
+            ? `Some fields need attention: ${unnamed.join(", ")}.`
+            : offending && offending !== locale
+              ? `Some fields need attention — switched to ${offending.toUpperCase()}.`
+              : "Some fields need attention.",
         );
       } else {
         setError("That did not save. Please try again.");
@@ -282,6 +293,7 @@ export function SlideForm({
             id="order"
             type="number"
             min={0}
+            max={9999}
             value={draft.order}
             onChange={(event) => setDraft({ ...draft, order: event.target.value })}
             className="h-10"

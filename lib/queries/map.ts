@@ -1,5 +1,6 @@
 import type { Types } from "mongoose";
 
+import { isSiteRelativePath } from "../slides/validate";
 import type {
   Brand,
   Category,
@@ -72,11 +73,16 @@ type LeanHeroSlide = {
 };
 
 export function toHeroSlide(doc: LeanHeroSlide): HeroSlide {
+  const href = doc.href?.trim() || undefined;
   return {
     id: idToString(doc._id),
     image: doc.image,
     alt: localized(doc.alt),
-    href: doc.href?.trim() || undefined,
+    // The write handler already checked this, but it cannot vouch for a
+    // document it did not write — a legacy row, an imported dump or a restored
+    // backup can still carry an absolute or javascript: href. Re-check here so
+    // a bad value renders as a plain image rather than a live off-site link.
+    href: href && isSiteRelativePath(href) ? href : undefined,
     width: doc.width ?? undefined,
     height: doc.height ?? undefined,
     order: doc.order ?? 0,

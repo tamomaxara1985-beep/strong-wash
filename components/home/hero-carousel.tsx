@@ -31,11 +31,21 @@ export function HeroCarousel({ slides, locale }: { slides: HeroSlide[]; locale: 
   const [paused, setPaused] = useState(false);
   const [hidden, setHidden] = useState(() => typeof document !== "undefined" && document.hidden);
 
-  const scrollToIndex = useCallback((index: number) => {
-    const track = trackRef.current;
-    if (!track) return;
-    track.scrollTo({ left: track.clientWidth * index, behavior: "smooth" });
-  }, []);
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      const track = trackRef.current;
+      if (!track) return;
+      // Wrapping from the last slide back to the first with a smooth scroll
+      // animates through every intermediate slide, each crossing the
+      // intersection observer's threshold and churning the autoplay interval.
+      // That one transition jumps instead; every other transition — including
+      // the reverse wrap from the first slide back to the last — still scrolls
+      // smoothly.
+      const behavior = index === 0 && current === slides.length - 1 ? "auto" : "smooth";
+      track.scrollTo({ left: track.clientWidth * index, behavior });
+    },
+    [current, slides.length],
+  );
 
   // Which slide is showing, decided by what the browser actually scrolled to
   // rather than by a counter this component keeps — a swipe moves the track
@@ -81,7 +91,10 @@ export function HeroCarousel({ slides, locale }: { slides: HeroSlide[]; locale: 
       const track = trackRef.current;
       if (!track) return;
       const next = (current + 1) % slides.length;
-      track.scrollTo({ left: track.clientWidth * next, behavior: "smooth" });
+      // Same wrap-around jump as scrollToIndex: only when this advance wraps
+      // from the last slide back to the first.
+      const behavior = next === 0 ? "auto" : "smooth";
+      track.scrollTo({ left: track.clientWidth * next, behavior });
     }, AUTOPLAY_MS);
 
     return () => window.clearInterval(timer);

@@ -2,6 +2,7 @@ import { cache } from "react";
 
 import { connectToDatabase } from "../db";
 import { HeroSlide as HeroSlideModel } from "../models/hero-slide";
+import { isCloudinaryImageUrl } from "../slides/validate";
 import type { HeroSlide } from "../types";
 import { toHeroSlide } from "./map";
 
@@ -16,5 +17,8 @@ import { toHeroSlide } from "./map";
 export const getHeroSlides = cache(async (): Promise<HeroSlide[]> => {
   await connectToDatabase();
   const docs = await HeroSlideModel.find({ isActive: true }).sort({ order: 1 }).lean();
-  return docs.map(toHeroSlide);
+  // The write handler already checked the image host, but it cannot vouch for
+  // a document it did not write — a legacy row, an imported dump or a restored
+  // backup can still point at a host next/image will throw on at render time.
+  return docs.map(toHeroSlide).filter((slide) => isCloudinaryImageUrl(slide.image));
 });

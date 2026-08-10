@@ -67,6 +67,15 @@ async function main() {
     check("a set en wins", slides[0]?.alt.en === "first EN");
     check("href is undefined when unset", slides[0]?.href === undefined);
 
+    // Item 7: the fallback itself, not just the absence of a premature
+    // ka-backfill in the mapper — pickLocale() is what's supposed to resolve
+    // an unset en/ru to the Georgian text at render time.
+    const { pickLocale } = await import("../lib/localized");
+    check(
+      "pickLocale falls back to Georgian when a locale is unset",
+      pickLocale(slides[1]?.alt, "en") === slides[1]?.alt.ka,
+    );
+
     await HeroSlide.updateMany({ "alt.ka": { $regex: MARKER } }, { $set: { isActive: false } });
     const none = (await import("../lib/queries/slides")).getHeroSlides;
     const empty = (await none()).filter((s) => s.alt.ka.includes(MARKER));
@@ -104,11 +113,40 @@ async function main() {
       check(`the href rule refuses ${JSON.stringify(bad)}`, !isSiteRelativePath(bad));
     }
 
+    // Item 6: the schema itself, not just the validate.ts helpers above —
+    // slideSchema is what the write handlers actually run.
+    const { slideSchema } = await import("../lib/auth/schemas");
+    check(
+      "slideSchema rejects an empty Georgian alt",
+      !slideSchema.safeParse({
+        image: `${base}a.jpg`,
+        alt: { ka: "" },
+        order: 0,
+        isActive: true,
+      }).success,
+    );
+    check(
+      "slideSchema accepts a valid payload",
+      slideSchema.safeParse({
+        image: `${base}a.jpg`,
+        alt: { ka: `${MARKER} schema-valid` },
+        order: 0,
+        isActive: true,
+      }).success,
+    );
+
     await cleanup();
     const afterCleanup = await (await import("../lib/queries/slides")).getHeroSlides();
     check(
       "an empty collection yields an array, not a throw",
       Array.isArray(afterCleanup),
+    );
+    // Array.isArray() alone is unconditionally true for a .map() result — it
+    // only proves the query did not throw. This is the assertion that would
+    // actually fail if cleanup left a fixture behind.
+    check(
+      "and it carries none of the fixture markers this run created",
+      !afterCleanup.some((slide) => slide.alt.ka.includes(MARKER)),
     );
   } finally {
     await cleanup();

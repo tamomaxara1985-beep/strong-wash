@@ -53,7 +53,13 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
   return (
     <>
       {slides.length ? (
-        <HeroCarousel slides={slides} locale={typedLocale} />
+        <>
+          {/* The banner's headline is pixels inside the artwork, invisible to a
+              screen reader or a crawler, so the page still needs a real h1 —
+              visually hidden, since the visual heading is the carousel itself. */}
+          <h1 className="sr-only">{t("home.heroTitle")}</h1>
+          <HeroCarousel slides={slides} locale={typedLocale} />
+        </>
       ) : (
         /* Cover. The supplied brand artwork leads the page, on the white it was
            drawn for, and the section closes on a yellow rule sheared to the same
