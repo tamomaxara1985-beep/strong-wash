@@ -103,6 +103,13 @@ async function main() {
     ]) {
       check(`the href rule refuses ${JSON.stringify(bad)}`, !isSiteRelativePath(bad));
     }
+
+    await cleanup();
+    const afterCleanup = await (await import("../lib/queries/slides")).getHeroSlides();
+    check(
+      "an empty collection yields an array, not a throw",
+      Array.isArray(afterCleanup),
+    );
   } finally {
     await cleanup();
     await mongoose.disconnect();
