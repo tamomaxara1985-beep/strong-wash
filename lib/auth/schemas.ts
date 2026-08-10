@@ -247,6 +247,28 @@ export const slideSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+/**
+ * `name`, `address` and `workHours` are `localizedRequired`: a branch a visitor
+ * cannot name or find is not worth listing. `phone` is one string, as a telephone
+ * number is not translated.
+ *
+ * The map-host rule is enforced in the route handler rather than here, so it can
+ * report a field code the form explains.
+ */
+export const locationSchema = z.object({
+  name: localizedRequired,
+  phone: z.string().trim().min(3, "required").max(40),
+  email: z.string().trim().toLowerCase().max(254).email().optional().or(z.literal("")),
+  address: localizedRequired,
+  workHours: localizedRequired,
+  mapUrl: z.string().trim().max(500).optional().or(z.literal("")),
+  order: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 0 : value),
+    z.coerce.number().int().min(0).max(9999),
+  ),
+  isActive: z.boolean().default(true),
+});
+
 /** Flattens Zod issues into the `{field: code}` shape the API contract uses. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const fields: Record<string, string> = {};
