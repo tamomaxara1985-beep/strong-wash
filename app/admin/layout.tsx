@@ -4,6 +4,7 @@ import {
   FolderTree,
   GalleryHorizontal,
   LayoutDashboard,
+  MapPin,
   Package,
   Paperclip,
   Settings,
@@ -40,6 +41,7 @@ const NAV = [
   { href: "/admin/attachments", label: "Quote attachments", icon: Paperclip },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/settings", label: "Site settings", icon: Settings },
+  { href: "/admin/locations", label: "Locations", icon: MapPin },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

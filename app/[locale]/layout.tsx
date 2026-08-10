@@ -8,6 +8,7 @@ import { SettingsStyle } from "@/components/layout/settings-style";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { routing } from "@/i18n/routing";
+import { getLocations } from "@/lib/queries/locations";
 import { getSiteSettings } from "@/lib/queries/settings";
 import { fontClassNames } from "@/lib/settings/fonts";
 import type { Locale } from "@/lib/types";
@@ -110,7 +111,7 @@ export default async function LocaleLayout({
 
   // Never throws: on any failure it returns the defaults, because an error here
   // would take down every page rather than one component.
-  const settings = await getSiteSettings();
+  const [settings, locations] = await Promise.all([getSiteSettings(), getLocations()]);
 
   return (
     <html
@@ -123,9 +124,9 @@ export default async function LocaleLayout({
       </head>
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider>
-          <SiteHeader locale={locale as Locale} settings={settings} />
+          <SiteHeader locale={locale as Locale} primary={locations[0]} />
           <main className="flex-1">{children}</main>
-          <SiteFooter locale={locale as Locale} settings={settings} />
+          <SiteFooter locale={locale as Locale} locations={locations} />
         </NextIntlClientProvider>
       </body>
     </html>

@@ -10,10 +10,6 @@ import { Label } from "@/components/ui/label";
 import { HEX, derivedShades } from "@/lib/settings/colors";
 import type { ResolvedSettings } from "@/lib/settings/defaults";
 import { FONTS } from "@/lib/settings/fonts";
-import { cn } from "@/lib/utils";
-
-const LOCALES = ["ka", "en", "ru"] as const;
-type Locale = (typeof LOCALES)[number];
 
 function messageFor(code: string, ratio?: number): string {
   switch (code) {
@@ -38,7 +34,6 @@ function messageFor(code: string, ratio?: number): string {
 
 export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
   const router = useRouter();
-  const [locale, setLocale] = useState<Locale>("ka");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -46,10 +41,6 @@ export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
   const [ratio, setRatio] = useState<number | undefined>(undefined);
 
   const [draft, setDraft] = useState({
-    phone: settings.phone,
-    email: settings.email,
-    address: { ...settings.address } as Record<Locale, string>,
-    workHours: { ...settings.workHours } as Record<Locale, string>,
     brandYellow: settings.brandYellow,
     brandBlack: settings.brandBlack,
     fontKey: settings.fontKey,
@@ -85,14 +76,7 @@ export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
       if (body.fields) {
         setFields(body.fields);
         setRatio(body.ratio);
-        const localeKey = Object.keys(body.fields).find((key) => /\.(ka|en|ru)$/.test(key));
-        const offending = localeKey?.split(".").pop() as Locale | undefined;
-        if (offending && offending !== locale) setLocale(offending);
-        setError(
-          offending && offending !== locale
-            ? `Some fields need attention — switched to ${offending.toUpperCase()}.`
-            : "Some fields need attention.",
-        );
+        setError("Some fields need attention.");
       } else {
         setError("That did not save. Please try again.");
       }
@@ -117,83 +101,6 @@ export function SettingsForm({ settings }: { settings: ResolvedSettings }) {
           Saved. The site updates on its next render.
         </p>
       ) : null}
-
-      <section className="bg-card grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="phone">Phone</Label>
-          <Input
-            id="phone"
-            value={draft.phone}
-            onChange={(event) => setDraft({ ...draft, phone: event.target.value })}
-            className="h-10"
-          />
-          <p className="text-muted-foreground text-xs">Shown in the header, footer and on every product page.</p>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            value={draft.email}
-            onChange={(event) => setDraft({ ...draft, email: event.target.value })}
-            aria-invalid={Boolean(fieldError("email"))}
-            className="h-10"
-          />
-          {fieldError("email") ? (
-            <p className="text-destructive text-xs">{fieldError("email")}</p>
-          ) : (
-            <p className="text-muted-foreground text-xs">Empty hides the footer email row entirely.</p>
-          )}
-        </div>
-      </section>
-
-      <section className="bg-card flex flex-col gap-4 rounded-lg border p-4">
-        <div className="flex items-center gap-2">
-          {LOCALES.map((code) => (
-            <button
-              key={code}
-              type="button"
-              onClick={() => setLocale(code)}
-              className={cn(
-                "inline-flex h-8 items-center rounded-md px-3 text-sm font-semibold uppercase transition-colors",
-                locale === code ? "bg-brand-black text-white" : "hover:bg-secondary",
-              )}
-            >
-              {code}
-            </button>
-          ))}
-          <span className="text-muted-foreground ml-auto text-xs">Empty falls back to the built-in translation.</span>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`address-${locale}`}>Address</Label>
-          <Input
-            id={`address-${locale}`}
-            value={draft.address[locale] ?? ""}
-            onChange={(event) => setDraft({ ...draft, address: { ...draft.address, [locale]: event.target.value } })}
-            aria-invalid={Boolean(fieldError(`address.${locale}`))}
-            className="h-10"
-          />
-          {fieldError(`address.${locale}`) ? (
-            <p className="text-destructive text-xs">{fieldError(`address.${locale}`)}</p>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`hours-${locale}`}>Working hours</Label>
-          <Input
-            id={`hours-${locale}`}
-            value={draft.workHours[locale] ?? ""}
-            onChange={(event) => setDraft({ ...draft, workHours: { ...draft.workHours, [locale]: event.target.value } })}
-            aria-invalid={Boolean(fieldError(`workHours.${locale}`))}
-            className="h-10"
-          />
-          {fieldError(`workHours.${locale}`) ? (
-            <p className="text-destructive text-xs">{fieldError(`workHours.${locale}`)}</p>
-          ) : null}
-        </div>
-      </section>
 
       <section className="bg-card flex flex-col gap-4 rounded-lg border p-4">
         <div className="grid gap-4 sm:grid-cols-2">

@@ -1,5 +1,7 @@
 import type { Types } from "mongoose";
 
+import { DEFAULT_LOCATION } from "../locations/defaults";
+import { isMapUrl } from "../locations/validate";
 import { isSiteRelativePath } from "../slides/validate";
 import type {
   Brand,
@@ -11,6 +13,7 @@ import type {
   ProductSpec,
   SpecDefinition,
   StockStatus,
+  StoreLocation,
 } from "../types";
 
 /**
@@ -85,6 +88,37 @@ export function toHeroSlide(doc: LeanHeroSlide): HeroSlide {
     href: href && isSiteRelativePath(href) ? href : undefined,
     width: doc.width ?? undefined,
     height: doc.height ?? undefined,
+    order: doc.order ?? 0,
+    isActive: doc.isActive ?? true,
+  };
+}
+
+type LeanStoreLocation = {
+  _id: Id;
+  name?: LeanLocalized;
+  phone: string;
+  email?: string | null;
+  address?: LeanLocalized;
+  workHours?: LeanLocalized;
+  mapUrl?: string | null;
+  order?: number;
+  isActive?: boolean;
+};
+
+export function toStoreLocation(doc: LeanStoreLocation): StoreLocation {
+  const mapUrl = doc.mapUrl?.trim();
+  return {
+    id: idToString(doc._id),
+    name: localized(doc.name),
+    phone: doc.phone?.trim() || DEFAULT_LOCATION.phone,
+    email: doc.email?.trim() || undefined,
+    address: localized(doc.address),
+    workHours: localized(doc.workHours),
+    // The write handler already checked this, but it cannot vouch for a
+    // document it did not write — a legacy row, an imported dump or a restored
+    // backup can still carry a non-Google host. Re-check here so a bad value
+    // renders as no "Directions" link rather than a live off-site link.
+    mapUrl: mapUrl && isMapUrl(mapUrl) ? mapUrl : undefined,
     order: doc.order ?? 0,
     isActive: doc.isActive ?? true,
   };

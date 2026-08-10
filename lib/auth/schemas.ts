@@ -185,12 +185,6 @@ export const savedProductSchema = z.object({
   action: z.enum(["add", "remove"]),
 });
 
-const optionalLocalized = z.object({
-  ka: z.string().trim().max(200).optional().or(z.literal("")),
-  en: z.string().trim().max(200).optional().or(z.literal("")),
-  ru: z.string().trim().max(200).optional().or(z.literal("")),
-});
-
 /**
  * Every field is optional: empty means "fall back to the default", which is what
  * clearing a box in the form has to mean.
@@ -200,10 +194,6 @@ const optionalLocalized = z.object({
  * declaration could inject rules of its own.
  */
 export const settingsSchema = z.object({
-  phone: z.string().trim().max(40).optional().or(z.literal("")),
-  email: z.string().trim().toLowerCase().max(254).email().optional().or(z.literal("")),
-  address: optionalLocalized.optional(),
-  workHours: optionalLocalized.optional(),
   brandYellow: z
     .string()
     .trim()
@@ -240,6 +230,28 @@ export const slideSchema = z.object({
     (value) => (value === "" || value === null || value === undefined ? undefined : value),
     z.coerce.number().int().min(1).max(20000).optional(),
   ),
+  order: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 0 : value),
+    z.coerce.number().int().min(0).max(9999),
+  ),
+  isActive: z.boolean().default(true),
+});
+
+/**
+ * `name`, `address` and `workHours` are `localizedRequired`: a branch a visitor
+ * cannot name or find is not worth listing. `phone` is one string, as a telephone
+ * number is not translated.
+ *
+ * The map-host rule is enforced in the route handler rather than here, so it can
+ * report a field code the form explains.
+ */
+export const locationSchema = z.object({
+  name: localizedRequired,
+  phone: z.string().trim().min(3, "required").max(40),
+  email: z.string().trim().toLowerCase().max(254).email().optional().or(z.literal("")),
+  address: localizedRequired,
+  workHours: localizedRequired,
+  mapUrl: z.string().trim().max(500).optional().or(z.literal("")),
   order: z.preprocess(
     (value) => (value === "" || value === null || value === undefined ? 0 : value),
     z.coerce.number().int().min(0).max(9999),

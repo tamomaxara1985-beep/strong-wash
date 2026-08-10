@@ -91,10 +91,6 @@ export async function PATCH(request: NextRequest) {
       { _id: SETTINGS_ID },
       {
         $set: {
-          phone: parsed.data.phone ?? "",
-          email: parsed.data.email ?? "",
-          address: parsed.data.address ?? {},
-          workHours: parsed.data.workHours ?? {},
           brandYellow: brandYellow ?? "",
           brandBlack: brandBlack ?? "",
           fontKey: fontKey ?? "",

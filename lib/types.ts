@@ -48,6 +48,18 @@ export type HeroSlide = {
   isActive: boolean;
 };
 
+export type StoreLocation = {
+  id: string;
+  name: LocalizedString;
+  phone: string;
+  email?: string;
+  address: LocalizedString;
+  workHours: LocalizedString;
+  mapUrl?: string;
+  order: number;
+  isActive: boolean;
+};
+
 export type Category = {
   id: string;
   slug: string;

@@ -22,12 +22,12 @@ import {
   getCategoryTrail,
   getSpecSchemaLookup,
 } from "@/lib/queries/categories";
+import { getPrimaryLocation } from "@/lib/queries/locations";
 import {
   getProductBySlug,
   getRelatedProducts,
   listActiveProductSlugs,
 } from "@/lib/queries/products";
-import { getSiteSettings } from "@/lib/queries/settings";
 import { getCardSpecs, resolveSpecs } from "@/lib/specs";
 import type { Locale } from "@/lib/types";
 
@@ -84,7 +84,7 @@ export default async function ProductPage({ params }: PageProps<"/[locale]/p/[sl
   // with the first paint instead of flashing an unsaved heart.
   const session = await getSession();
   const savedIds = session ? await getSavedProductIds(session.userId) : new Set<string>();
-  const settings = await getSiteSettings();
+  const primary = await getPrimaryLocation();
 
   const category = await getCategoryById(product.category);
   const [trail, related, specSchema] = await Promise.all([
@@ -188,14 +188,14 @@ export default async function ProductPage({ params }: PageProps<"/[locale]/p/[sl
               }
             />
             <a
-              href={`tel:${settings.phone.replace(/\s/g, "")}`}
+              href={`tel:${primary.phone.replace(/\s/g, "")}`}
               className="hover:bg-secondary focus-visible:ring-ring inline-flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
               <Phone aria-hidden className="size-4" />
               {/* The number itself, not "Request a quote" — that label now
                   belongs to the dialog above, and two buttons reading the same
                   thing is a coin toss rather than a choice. */}
-              <span className="text-data">{settings.phone}</span>
+              <span className="text-data">{primary.phone}</span>
             </a>
             <SaveProductButton
               productId={product.id}

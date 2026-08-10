@@ -112,9 +112,14 @@
     "warranty": "Warranty",
     "returns": "Service & spare parts",
     "faq": "FAQ",
-    "address": "116 Ts. Tsereteli Ave, Tbilisi",
-    "workHours": "Mon–Sat 10:00–18:00",
+    "allLocations": "All locations",
     "rights": "All rights reserved."
+  },
+  "locations": {
+    "title": "Our locations",
+    "intro": "Come and see the equipment. Every branch carries the full range and can arrange delivery and installation.",
+    "hours": "Opening hours",
+    "directions": "Directions"
   },
   "notFound": {
     "title": "Page not found",
