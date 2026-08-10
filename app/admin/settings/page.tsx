@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { SettingsForm } from "@/components/admin/settings-form";
 import { getSiteSettings } from "@/lib/queries/settings";
 
@@ -9,8 +11,12 @@ export default async function AdminSettingsPage() {
       <header>
         <h1 className="text-display text-2xl">Site settings</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Contact details, brand colours and the typeface. Clearing a field restores its
-          default.
+          Brand colours and the typeface. Clearing a field restores its default.
+          Phone numbers and addresses live under{" "}
+          <Link href="/admin/locations" className="underline">
+            Locations
+          </Link>
+          .
         </p>
       </header>
 

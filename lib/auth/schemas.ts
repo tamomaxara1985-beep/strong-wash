@@ -185,12 +185,6 @@ export const savedProductSchema = z.object({
   action: z.enum(["add", "remove"]),
 });
 
-const optionalLocalized = z.object({
-  ka: z.string().trim().max(200).optional().or(z.literal("")),
-  en: z.string().trim().max(200).optional().or(z.literal("")),
-  ru: z.string().trim().max(200).optional().or(z.literal("")),
-});
-
 /**
  * Every field is optional: empty means "fall back to the default", which is what
  * clearing a box in the form has to mean.
@@ -200,10 +194,6 @@ const optionalLocalized = z.object({
  * declaration could inject rules of its own.
  */
 export const settingsSchema = z.object({
-  phone: z.string().trim().max(40).optional().or(z.literal("")),
-  email: z.string().trim().toLowerCase().max(254).email().optional().or(z.literal("")),
-  address: optionalLocalized.optional(),
-  workHours: optionalLocalized.optional(),
   brandYellow: z
     .string()
     .trim()

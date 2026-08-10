@@ -14,16 +14,13 @@ import { getSession } from "@/lib/auth/session";
 import { pickLocale } from "@/lib/localized";
 import { getCategoryTree } from "@/lib/queries/categories";
 import { countProductsPerCategory } from "@/lib/queries/products";
-import type { ResolvedSettings } from "@/lib/settings/defaults";
 import type { Locale, StoreLocation } from "@/lib/types";
 
 export async function SiteHeader({
   locale,
-  settings,
   primary,
 }: {
   locale: Locale;
-  settings: ResolvedSettings;
   primary: StoreLocation;
 }) {
   const t = await getTranslations();

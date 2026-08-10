@@ -124,9 +124,9 @@ export default async function LocaleLayout({
       </head>
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider>
-          <SiteHeader locale={locale as Locale} settings={settings} primary={locations[0]} />
+          <SiteHeader locale={locale as Locale} primary={locations[0]} />
           <main className="flex-1">{children}</main>
-          <SiteFooter locale={locale as Locale} settings={settings} locations={locations} />
+          <SiteFooter locale={locale as Locale} locations={locations} />
         </NextIntlClientProvider>
       </body>
     </html>

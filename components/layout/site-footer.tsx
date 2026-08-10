@@ -5,16 +5,13 @@ import { FooterLocations } from "@/components/layout/footer-locations";
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/lib/localized";
 import { getRootCategories } from "@/lib/queries/categories";
-import type { ResolvedSettings } from "@/lib/settings/defaults";
 import type { Locale, StoreLocation } from "@/lib/types";
 
 export async function SiteFooter({
   locale,
-  settings,
   locations,
 }: {
   locale: Locale;
-  settings: ResolvedSettings;
   locations: StoreLocation[];
 }) {
   const t = await getTranslations();

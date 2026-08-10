@@ -35,55 +35,23 @@ async function main() {
 
     const { getSiteSettings } = await import("../lib/queries/settings");
     const empty = await getSiteSettings();
-    check("with no document, every field is populated", Boolean(empty.phone && empty.brandYellow && empty.fontKey));
+    check("with no document, every field is populated", Boolean(empty.brandYellow && empty.fontKey));
     // `getSiteSettings()` returns `DEFAULT_SETTINGS` BY REFERENCE when no document
     // exists, so comparing `empty` against `DEFAULT_SETTINGS` by JSON would just
     // compare the object with itself and pass for any implementation. Specific
     // expected values are asserted instead.
-    check("with no document, phone matches the default", empty.phone === "+995 322 40 40 40");
     check("with no document, brandYellow matches the default", empty.brandYellow === "#fec303");
     check("with no document, brandBlack matches the default", empty.brandBlack === "#010101");
     check("with no document, fontKey matches the default", empty.fontKey === "manrope");
-    check(
-      "with no document, the localized address matches the default",
-      empty.address.ka === "თბილისი, ქ. წერეთლის გამზ. 116" &&
-        empty.address.en === "116 Ts. Tsereteli Ave, Tbilisi" &&
-        empty.address.ru === "Тбилиси, пр. Ц. Церетели 116",
-    );
 
-    await SiteSettings.updateOne(
-      { _id: SETTINGS_ID },
-      { $set: { phone: "+995 000 00 00 00", address: { ka: "ტესტი" } } },
-      { upsert: true },
-    );
+    await SiteSettings.create({ _id: SETTINGS_ID });
 
     // `cache()` memoises per React request scope; in a plain script each call
     // re-reads, which is what the next assertion depends on.
     const partial = await (await import("../lib/queries/settings")).getSiteSettings();
-    check("a stored field wins", partial.phone === "+995 000 00 00 00");
     check("an unset field still falls back", partial.brandYellow === DEFAULT_SETTINGS.brandYellow);
-    check("a stored ka wins for ka", partial.address.ka === "ტესტი");
-    // THE RULE: an unset locale falls back to the admin's own stored `ka` when
-    // there is one — matching `pickLocale`'s contract everywhere else in this
-    // codebase — and only to the default when the admin has stored nothing at
-    // all. Falling back to the default per-locale would leave `/en` and `/ru`
-    // serving stale data forever after a Georgian-only edit.
-    check("an unset en falls back to the admin's stored ka, not the default en", partial.address.en === "ტესტი");
-    check("an unset ru falls back to the admin's stored ka, not the default ru", partial.address.ru === "ტესტი");
 
-    // The stored `address` subdocument itself absent entirely — not merely an
-    // unset locale within it — is the "admin has stored nothing at all" case
-    // the new rule still has to default on.
-    await SiteSettings.updateOne({ _id: SETTINGS_ID }, { $unset: { address: "" } });
-    const nothingStored = await (await import("../lib/queries/settings")).getSiteSettings();
-    check(
-      "the default still wins when the stored object is absent entirely",
-      nothingStored.address.ka === DEFAULT_SETTINGS.address.ka &&
-        nothingStored.address.en === DEFAULT_SETTINGS.address.en &&
-        nothingStored.address.ru === DEFAULT_SETTINGS.address.ru,
-    );
-
-    await SiteSettings.updateOne({ _id: SETTINGS_ID }, { $set: { phone: "+995 111" } }, { upsert: true });
+    await SiteSettings.updateOne({ _id: SETTINGS_ID }, { $set: { brandBlack: "#111111" } }, { upsert: true });
     check("saving twice upserts rather than duplicating", (await SiteSettings.countDocuments({})) === 1);
 
     // A document written outside the app — `mongosh`, a restored dump, a future
@@ -95,12 +63,11 @@ async function main() {
     await SiteSettings.collection.insertOne({
       _id: SETTINGS_ID,
       brandYellow: 123,
-      address: "not an object",
     } as never);
     const malformed = await (await import("../lib/queries/settings")).getSiteSettings();
     check(
       "a malformed stored document returns usable defaults rather than throwing",
-      malformed.phone === DEFAULT_SETTINGS.phone && malformed.brandYellow === DEFAULT_SETTINGS.brandYellow,
+      malformed.brandYellow === DEFAULT_SETTINGS.brandYellow,
     );
     await SiteSettings.deleteOne({ _id: SETTINGS_ID });
 
@@ -143,7 +110,7 @@ async function main() {
       const onFailure = await (await import("../lib/queries/settings")).getSiteSettings();
       check(
         "getSiteSettings returns defaults rather than throwing when the query fails",
-        onFailure.phone === DEFAULT_SETTINGS.phone && onFailure.brandYellow === DEFAULT_SETTINGS.brandYellow,
+        onFailure.brandYellow === DEFAULT_SETTINGS.brandYellow,
       );
     } finally {
       SiteSettings.findById = originalFindById;
