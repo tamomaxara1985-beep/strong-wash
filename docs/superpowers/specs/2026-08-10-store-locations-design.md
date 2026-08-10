@@ -70,9 +70,14 @@ it is why no migration script is needed — see below.
 ## Storefront
 
 **Footer** (`components/layout/site-footer.tsx`). The contact column becomes a list:
-each branch's name, its phone as a `tel:` link, and its address. Past two branches
-it shows the first two and an "All locations →" link, so the footer cannot grow
-without bound as showrooms are added.
+each branch's name, its phone as a `tel:` link, and its address. Up to three
+branches are listed in full; at four or more it shows the first three and an
+"All locations →" link, so the footer cannot grow without bound as showrooms are
+added.
+
+Three is the cutoff because the business has three branches today: listing all of
+them keeps every number one glance away, and the link only appears once the column
+would genuinely crowd.
 
 **Header** (`components/layout/site-header.tsx`). The "Showroom" link points at
 `/locations` instead of `/c/spare-parts`. The phone beside it is the primary
@@ -158,8 +163,8 @@ Browser pass:
 
 9. With no locations stored, the footer and header look exactly as they do today.
 10. One location: the footer shows it, no "All locations" link.
-11. Two: both shown, still no link.
-12. Four: first two shown plus the link, which reaches `/locations`.
+11. Three — the real count: all three shown, still no link.
+12. Four: first three shown plus the link, which reaches `/locations`.
 13. `/locations` renders every active branch in all three locales, with hours and a
     working Directions link.
 14. The header's "Showroom" link reaches `/locations`.
