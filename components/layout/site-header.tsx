@@ -15,14 +15,16 @@ import { pickLocale } from "@/lib/localized";
 import { getCategoryTree } from "@/lib/queries/categories";
 import { countProductsPerCategory } from "@/lib/queries/products";
 import type { ResolvedSettings } from "@/lib/settings/defaults";
-import type { Locale } from "@/lib/types";
+import type { Locale, StoreLocation } from "@/lib/types";
 
 export async function SiteHeader({
   locale,
   settings,
+  primary,
 }: {
   locale: Locale;
   settings: ResolvedSettings;
+  primary: StoreLocation;
 }) {
   const t = await getTranslations();
 
@@ -58,18 +60,18 @@ export async function SiteHeader({
           <p className="text-white/65">{t("common.tagline")}</p>
           <div className="flex items-center gap-4">
             <Link
-              href="/c/spare-parts"
+              href="/locations"
               className="inline-flex items-center gap-1.5 text-white/80 transition-colors hover:text-white"
             >
               <MapPin aria-hidden className="size-3.5" />
               {t("nav.stores")}
             </Link>
             <a
-              href={`tel:${settings.phone.replace(/\s/g, "")}`}
+              href={`tel:${primary.phone.replace(/\s/g, "")}`}
               className="text-data inline-flex items-center gap-1.5 font-semibold text-white/90 transition-colors hover:text-white"
             >
               <Phone aria-hidden className="size-3.5" />
-              {settings.phone}
+              {primary.phone}
             </a>
             <LocaleSwitcher className="text-white hover:bg-white/10" />
           </div>
@@ -78,7 +80,7 @@ export async function SiteHeader({
 
       {/* Main bar — white, so the two-colour logo is used exactly as supplied. */}
       <div className="container-page flex h-16 items-center gap-3">
-        <MobileNav categories={navCategories} phone={settings.phone} signedIn={Boolean(session)} />
+        <MobileNav categories={navCategories} phone={primary.phone} signedIn={Boolean(session)} />
 
         <Link
           href="/"

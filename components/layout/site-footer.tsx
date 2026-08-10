@@ -1,19 +1,21 @@
-import { Mail, MapPin, Phone } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { FooterLocations } from "@/components/layout/footer-locations";
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/lib/localized";
 import { getRootCategories } from "@/lib/queries/categories";
 import type { ResolvedSettings } from "@/lib/settings/defaults";
-import type { Locale } from "@/lib/types";
+import type { Locale, StoreLocation } from "@/lib/types";
 
 export async function SiteFooter({
   locale,
   settings,
+  locations,
 }: {
   locale: Locale;
   settings: ResolvedSettings;
+  locations: StoreLocation[];
 }) {
   const t = await getTranslations();
   const roots = await getRootCategories();
@@ -66,33 +68,7 @@ export async function SiteFooter({
           <p className="text-white text-sm font-semibold">
             {t("footer.contactTitle")}
           </p>
-          <ul className="mt-3 flex flex-col gap-2.5 text-sm">
-            <li>
-              <a
-                href={`tel:${settings.phone.replace(/\s/g, "")}`}
-                className="text-data hover:text-white inline-flex items-center gap-2 font-semibold transition-colors"
-              >
-                <Phone aria-hidden className="size-4" />
-                {settings.phone}
-              </a>
-            </li>
-            <li className="inline-flex items-start gap-2">
-              <MapPin aria-hidden className="mt-0.5 size-4 shrink-0" />
-              {pickLocale(settings.address, locale)}
-            </li>
-            {settings.email ? (
-              <li>
-                <a
-                  href={`mailto:${settings.email}`}
-                  className="hover:text-white inline-flex items-center gap-2 transition-colors"
-                >
-                  <Mail aria-hidden className="size-4 shrink-0" />
-                  {settings.email}
-                </a>
-              </li>
-            ) : null}
-            <li className="text-white/60">{pickLocale(settings.workHours, locale)}</li>
-          </ul>
+          <FooterLocations locations={locations} locale={locale} />
         </div>
       </div>
 
