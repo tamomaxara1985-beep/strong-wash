@@ -18,7 +18,7 @@ const AUTOPLAY_MS = 6000;
  * Built on native scroll-snap rather than a slider library: swipe, trackpad
  * flick and keyboard scrolling then come from the browser, and if this component
  * never hydrates the markup is still a scrollable strip of images rather than an
- * empty box. The arrows, the dots and autoplay all drive the same `scrollBy`.
+ * empty box. The arrows, the dots and autoplay all drive the same `scrollTo`.
  *
  * Nothing is cropped. The artwork carries its message inside the picture with
  * text close to the edges, so each image is contained on a brand-black backdrop
@@ -29,6 +29,7 @@ export function HeroCarousel({ slides, locale }: { slides: HeroSlide[]; locale: 
   const trackRef = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [hidden, setHidden] = useState(() => typeof document !== "undefined" && document.hidden);
 
   const scrollToIndex = useCallback((index: number) => {
     const track = trackRef.current;
@@ -59,21 +60,32 @@ export function HeroCarousel({ slides, locale }: { slides: HeroSlide[]; locale: 
     return () => observer.disconnect();
   }, [slides.length]);
 
+  // A hidden tab is tracked in state, not read inside the tick, so that a
+  // background tab tears the interval down entirely rather than merely
+  // skipping a tick — browsers throttle background timers but do not stop
+  // them, so a check inside the callback would still let elapsed time accrue
+  // while the visitor is away.
   useEffect(() => {
-    if (slides.length < 2 || paused) return;
+    const onVisibilityChange = () => setHidden(document.hidden);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    if (slides.length < 2 || paused || hidden) return;
     // Honouring the OS setting is not decoration: motion that starts on its own
     // is exactly what this preference exists to stop.
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const timer = window.setInterval(() => {
       const track = trackRef.current;
-      if (!track || document.hidden) return;
+      if (!track) return;
       const next = (current + 1) % slides.length;
       track.scrollTo({ left: track.clientWidth * next, behavior: "smooth" });
     }, AUTOPLAY_MS);
 
     return () => window.clearInterval(timer);
-  }, [current, paused, slides.length]);
+  }, [current, paused, hidden, slides.length]);
 
   if (!slides.length) return null;
 
