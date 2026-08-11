@@ -387,6 +387,7 @@ export type AdminLocationRow = {
   id: string;
   name: LocalizedString;
   phone: string;
+  phone2?: string;
   email?: string;
   address: LocalizedString;
   workHours: LocalizedString;
@@ -411,6 +412,7 @@ export async function listAdminLocations(): Promise<AdminLocationRow[]> {
       ru: doc.name?.ru ?? undefined,
     },
     phone: doc.phone,
+    phone2: doc.phone2?.trim() || undefined,
     email: doc.email?.trim() || undefined,
     address: {
       ka: doc.address?.ka ?? "",

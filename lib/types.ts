@@ -52,6 +52,8 @@ export type StoreLocation = {
   id: string;
   name: LocalizedString;
   phone: string;
+  /** Optional second number for the same branch; rendered on /locations only. */
+  phone2?: string;
   email?: string;
   address: LocalizedString;
   workHours: LocalizedString;

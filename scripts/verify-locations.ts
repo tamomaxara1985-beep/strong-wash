@@ -25,10 +25,11 @@ async function cleanup() {
   await StoreLocation.deleteMany({ "name.ka": { $regex: MARKER } });
 }
 
-function fixture(suffix: string, order: number, isActive = true) {
+function fixture(suffix: string, order: number, isActive = true, phone2?: string) {
   return {
     name: { ka: `${MARKER} ${suffix}` },
     phone: "+995 000 00 00 00",
+    phone2,
     address: { ka: `მისამართი ${suffix}` },
     workHours: { ka: "ორშ–შაბ 10:00–18:00" },
     order,
@@ -117,6 +118,42 @@ async function main() {
     ]) {
       check(`the map rule refuses ${JSON.stringify(bad)}`, !isMapUrl(bad));
     }
+
+    const { isSamePhone } = await import("../lib/locations/validate");
+
+    check("isSamePhone ignores spacing", isSamePhone("+995 322 40 40 40", "+995322404040"));
+    check(
+      "isSamePhone tells two different numbers apart",
+      !isSamePhone("+995 322 40 40 40", "+995 599 11 22 33"),
+    );
+    check(
+      "isSamePhone treats an empty second number as no duplicate",
+      !isSamePhone("+995 322 40 40 40", ""),
+    );
+
+    // A second number is optional, so all three states have to be checked: set,
+    // absent, and set to the same number as the primary — which the mapper
+    // drops, because a card showing one number twice reads as a bug.
+    await cleanup();
+    await StoreLocation.create(fixture("two-numbers", 10, true, "+995 599 11 22 33"));
+    await StoreLocation.create(fixture("one-number", 20));
+    await StoreLocation.create(fixture("dupe", 30, true, "+995 000 00 00 00"));
+
+    const phoneRows = (await stored()).filter((l) => l.name.ka.includes(MARKER));
+    const bySuffix = (suffix: string) => phoneRows.find((l) => l.name.ka.endsWith(suffix));
+
+    check(
+      "a stored second number comes back through the mapper",
+      bySuffix("two-numbers")?.phone2 === "+995 599 11 22 33",
+    );
+    check(
+      "an absent second number stays undefined rather than an empty string",
+      bySuffix("one-number")?.phone2 === undefined,
+    );
+    check(
+      "a second number equal to the first is dropped on read",
+      bySuffix("dupe")?.phone2 === undefined,
+    );
 
     // The PATCH and DELETE active-count guards both run exactly
     // `countDocuments({ isActive: true, _id: { $ne: <the row being changed> } })`
