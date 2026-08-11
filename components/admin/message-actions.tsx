@@ -39,9 +39,9 @@ export function MessageActions({
         return;
       }
       setError("Could not update that message.");
+      setPending(false);
     } catch {
       setError("Could not update that message.");
-    } finally {
       setPending(false);
     }
   }
@@ -59,9 +59,9 @@ export function MessageActions({
         return;
       }
       setError("Could not delete that message.");
+      setPending(false);
     } catch {
       setError("Could not delete that message.");
-    } finally {
       setPending(false);
     }
   }

@@ -700,6 +700,34 @@ export type AdminMessageRow = {
   createdAt: string;
 };
 
+type LeanContactMessage = {
+  _id: unknown;
+  name: string;
+  email: string;
+  phone?: string | null;
+  subject: string;
+  message: string;
+  locale?: string | null;
+  status?: string | null;
+  createdAt?: Date | string;
+};
+
+function toMessageRow(doc: LeanContactMessage): AdminMessageRow {
+  return {
+    id: String(doc._id),
+    name: doc.name,
+    email: doc.email,
+    phone: doc.phone?.trim() || undefined,
+    subject: doc.subject,
+    message: doc.message,
+    locale: doc.locale || "",
+    // Normalised rather than cast: a legacy row carrying anything other than
+    // "handled" belongs in the unread pile, and casting would badge it wrongly.
+    status: doc.status === "handled" ? "handled" : "new",
+    createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
+  };
+}
+
 /**
  * Every message, unread first and newest first within each group.
  *
@@ -707,28 +735,21 @@ export type AdminMessageRow = {
  * screen is to see what has not been answered; a handled message from this
  * morning is not more urgent than an unread one from yesterday.
  *
- * The grouping is applied here rather than in the query because Mongo can only
- * sort the status alphabetically, which puts "handled" before "new" — the exact
- * opposite of what this screen is for. `Array.prototype.sort` is stable, so the
- * `createdAt` order the query established survives inside each group.
+ * Two capped queries rather than one, because the cap must not be able to
+ * hide unread mail: with a single `limit(200)` an unanswered message older
+ * than the newest 200 becomes unreachable, and this list is the only route to
+ * the detail page. This is also the one collection an anonymous visitor can
+ * grow, so the cap is load-bearing rather than theoretical.
  */
 export async function listAdminMessages(): Promise<AdminMessageRow[]> {
   await connectToDatabase();
-  const docs = await ContactMessage.find({}).sort({ createdAt: -1 }).limit(200).lean();
 
-  const rows: AdminMessageRow[] = docs.map((doc) => ({
-    id: String(doc._id),
-    name: doc.name,
-    email: doc.email,
-    phone: doc.phone?.trim() || undefined,
-    subject: doc.subject,
-    message: doc.message,
-    locale: doc.locale,
-    status: (doc.status ?? "new") as AdminMessageRow["status"],
-    createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
-  }));
+  const [unread, handled] = await Promise.all([
+    ContactMessage.find({ status: "new" }).sort({ createdAt: -1 }).limit(200).lean(),
+    ContactMessage.find({ status: { $ne: "new" } }).sort({ createdAt: -1 }).limit(200).lean(),
+  ]);
 
-  return rows.sort((a, b) => Number(a.status === "handled") - Number(b.status === "handled"));
+  return [...unread, ...handled].map(toMessageRow);
 }
 
 export async function getAdminMessage(id: string): Promise<AdminMessageRow | null> {
@@ -738,15 +759,5 @@ export async function getAdminMessage(id: string): Promise<AdminMessageRow | nul
   const doc = await ContactMessage.findById(id).lean();
   if (!doc) return null;
 
-  return {
-    id: String(doc._id),
-    name: doc.name,
-    email: doc.email,
-    phone: doc.phone?.trim() || undefined,
-    subject: doc.subject,
-    message: doc.message,
-    locale: doc.locale,
-    status: (doc.status ?? "new") as AdminMessageRow["status"],
-    createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
-  };
+  return toMessageRow(doc);
 }

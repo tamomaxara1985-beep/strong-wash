@@ -124,7 +124,6 @@
   "contact": {
     "title": "Contact us",
     "intro": "Call, write, or send the form below and we will come back to you within one working day.",
-    "detailsTitle": "Contact details",
     "formTitle": "Send us a message",
     "name": "Full name",
     "email": "Email",
@@ -142,8 +141,7 @@
     "errorFields": "Some fields need attention.",
     "errorRequired": "This field is required.",
     "errorEmail": "Enter a valid email address.",
-    "errorTooLong": "That is longer than we can accept.",
-    "allLocations": "All locations"
+    "errorTooLong": "That is longer than we can accept."
   },
   "notFound": {
     "title": "Page not found",

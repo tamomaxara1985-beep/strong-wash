@@ -19,6 +19,9 @@ import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/types";
 const MAX_PER_IP = 5;
 const WINDOW_MS = 60 * 60 * 1000;
 
+/** Text-only endpoint: the field caps total well under this, so anything larger is not a real message. */
+const MAX_BODY_BYTES = 64 * 1024;
+
 /**
  * A message from the contact page.
  *
@@ -39,8 +42,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Rejected on the declared length before the body is read, so a deliberate
+  // 500 MB post does not get buffered first.
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (declared > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "payload_too_large" }, { status: 413 });
+  }
+
   try {
-    const payload = (await request.json()) as Record<string, unknown>;
+    const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
     const parsed = contactMessageSchema.safeParse(payload);
     if (!parsed.success) return validationError(fieldErrors(parsed.error));

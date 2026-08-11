@@ -29,7 +29,7 @@ const contactMessageSchema = new Schema(
   { timestamps: true },
 );
 
-/** The admin list's only query: unread first is a sort in the page, not here. */
+/** The admin list's only query: unread first is a sort in `listAdminMessages`, not here. */
 contactMessageSchema.index({ status: 1, createdAt: -1 });
 
 export type ContactMessageDocument = InferSchemaType<typeof contactMessageSchema>;

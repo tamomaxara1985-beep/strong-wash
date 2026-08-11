@@ -9,8 +9,8 @@ import type { Locale, StoreLocation } from "@/lib/types";
 /**
  * The primary branch's details, beside the form.
  *
- * It takes the branch as a prop rather than reading it: the page already needs
- * `getPrimaryLocation()` for its metadata, and two reads of the same cached
+ * It takes the branch as a prop rather than reading it: the page already reads
+ * the branch to render it and passes it down, and two reads of the same cached
  * query in one render is a fact worth not relying on.
  */
 export async function ContactDetails({
@@ -20,7 +20,7 @@ export async function ContactDetails({
   location: StoreLocation;
   locale: Locale;
 }) {
-  const t = await getTranslations("contact");
+  const t = await getTranslations();
   const address = pickLocale(location.address, locale);
   const mapHref = mapLink(address, location.mapUrl);
 
@@ -82,7 +82,7 @@ export async function ContactDetails({
         href="/locations"
         className="hover:text-primary mt-1 text-sm font-semibold transition-colors"
       >
-        {t("allLocations")} →
+        {t("footer.allLocations")} →
       </Link>
     </div>
   );

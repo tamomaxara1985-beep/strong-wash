@@ -114,8 +114,19 @@ export function ContactForm({ locale }: { locale: string }) {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="c-name">{t("name")}</Label>
-        <Input id="c-name" name="name" aria-invalid={Boolean(fieldError("name"))} required />
-        {fieldError("name") ? <p className="text-destructive text-xs">{fieldError("name")}</p> : null}
+        <Input
+          id="c-name"
+          name="name"
+          autoComplete="name"
+          aria-invalid={Boolean(fieldError("name"))}
+          aria-describedby={fieldError("name") ? "c-name-error" : undefined}
+          required
+        />
+        {fieldError("name") ? (
+          <p id="c-name-error" className="text-destructive text-xs">
+            {fieldError("name")}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -124,11 +135,15 @@ export function ContactForm({ locale }: { locale: string }) {
           id="c-email"
           name="email"
           type="email"
+          autoComplete="email"
           aria-invalid={Boolean(fieldError("email"))}
+          aria-describedby={fieldError("email") ? "c-email-error" : undefined}
           required
         />
         {fieldError("email") ? (
-          <p className="text-destructive text-xs">{fieldError("email")}</p>
+          <p id="c-email-error" className="text-destructive text-xs">
+            {fieldError("email")}
+          </p>
         ) : null}
       </div>
 
@@ -137,17 +152,34 @@ export function ContactForm({ locale }: { locale: string }) {
           {t("phone")}{" "}
           <span className="text-muted-foreground font-normal">({t("optional")})</span>
         </Label>
-        <Input id="c-phone" name="phone" className="text-data" aria-invalid={Boolean(fieldError("phone"))} />
+        <Input
+          id="c-phone"
+          name="phone"
+          autoComplete="tel"
+          className="text-data"
+          aria-invalid={Boolean(fieldError("phone"))}
+          aria-describedby={fieldError("phone") ? "c-phone-error" : undefined}
+        />
         {fieldError("phone") ? (
-          <p className="text-destructive text-xs">{fieldError("phone")}</p>
+          <p id="c-phone-error" className="text-destructive text-xs">
+            {fieldError("phone")}
+          </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="c-subject">{t("subject")}</Label>
-        <Input id="c-subject" name="subject" aria-invalid={Boolean(fieldError("subject"))} required />
+        <Input
+          id="c-subject"
+          name="subject"
+          aria-invalid={Boolean(fieldError("subject"))}
+          aria-describedby={fieldError("subject") ? "c-subject-error" : undefined}
+          required
+        />
         {fieldError("subject") ? (
-          <p className="text-destructive text-xs">{fieldError("subject")}</p>
+          <p id="c-subject-error" className="text-destructive text-xs">
+            {fieldError("subject")}
+          </p>
         ) : null}
       </div>
 
@@ -159,11 +191,14 @@ export function ContactForm({ locale }: { locale: string }) {
           rows={6}
           placeholder={t("messagePlaceholder")}
           aria-invalid={Boolean(fieldError("message"))}
+          aria-describedby={fieldError("message") ? "c-message-error" : undefined}
           required
           className="border-input bg-background focus-visible:ring-ring aria-invalid:border-destructive w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
         />
         {fieldError("message") ? (
-          <p className="text-destructive text-xs">{fieldError("message")}</p>
+          <p id="c-message-error" className="text-destructive text-xs">
+            {fieldError("message")}
+          </p>
         ) : null}
       </div>
 

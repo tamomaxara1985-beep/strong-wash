@@ -12,7 +12,7 @@ export default async function AdminMessagesPage() {
       <header>
         <h1 className="text-display text-2xl">Messages</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          {unread} unread, {messages.length} in total. Sent from the contact page; unread first.
+          {unread} unread, {messages.length} shown. Sent from the contact page; unread first.
         </p>
       </header>
 

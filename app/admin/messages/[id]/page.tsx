@@ -33,7 +33,7 @@ export default async function AdminMessagePage({ params }: PageProps<"/admin/mes
             {message.phone ? <span className="text-data">{message.phone}</span> : null}
             <span className="text-muted-foreground text-xs">
               {message.createdAt.slice(0, 16).replace("T", " ")} · wrote in{" "}
-              {message.locale.toUpperCase()}
+              {message.locale ? message.locale.toUpperCase() : "—"}
             </span>
           </div>
           <div className="flex flex-col items-end gap-2">
