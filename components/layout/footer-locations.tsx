@@ -44,6 +44,15 @@ export async function FooterLocations({
             <Phone aria-hidden className="size-4 shrink-0" />
             {location.phone}
           </a>
+          {location.phone2 ? (
+            <a
+              href={`tel:${location.phone2.replace(/\s/g, "")}`}
+              className="text-data hover:text-white inline-flex items-center gap-2 font-semibold transition-colors"
+            >
+              <Phone aria-hidden className="size-4 shrink-0" />
+              {location.phone2}
+            </a>
+          ) : null}
           {/* Clickable for the same reason it is on /locations: the address is
               what a visitor reaches for when they want the map. */}
           {mapHref ? (

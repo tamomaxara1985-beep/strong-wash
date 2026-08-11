@@ -5,12 +5,12 @@ import { localizedStringSchema } from "./shared";
 /**
  * One branch: somewhere a customer can walk into, with its own number.
  *
- * `phone` is the primary number — the one the header, the mobile nav and every
- * product page show. `phone2` is optional and appears on the locations page
- * only, because those three surfaces each have one slot for one number. Both are
- * single strings for the same reason a brand name is: a telephone number is not
- * translated. `name`, `address` and `workHours` are localized because each
- * genuinely reads differently per language.
+ * `phone` is the primary number and `phone2` an optional second line for the same
+ * branch. Both are shown wherever a branch's contact details appear — the header,
+ * the mobile nav, product pages, the footer and the locations page — since either
+ * one reaches the same branch. Both are single strings for the same reason a brand
+ * name is: a telephone number is not translated. `name`, `address` and `workHours`
+ * are localized because each genuinely reads differently per language.
  *
  * The model is called StoreLocation rather than Location because `Location` is a
  * global DOM type in TypeScript, and a same-named export shadows it in every file

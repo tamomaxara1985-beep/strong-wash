@@ -70,6 +70,18 @@ export async function SiteHeader({
               <Phone aria-hidden className="size-3.5" />
               {primary.phone}
             </a>
+            {/* The icon is repeated rather than shared: this bar is a flex row of
+                independent items, and one icon covering two links would leave
+                the second without an affordance of its own. */}
+            {primary.phone2 ? (
+              <a
+                href={`tel:${primary.phone2.replace(/\s/g, "")}`}
+                className="text-data inline-flex items-center gap-1.5 font-semibold text-white/90 transition-colors hover:text-white"
+              >
+                <Phone aria-hidden className="size-3.5" />
+                {primary.phone2}
+              </a>
+            ) : null}
             <LocaleSwitcher className="text-white hover:bg-white/10" />
           </div>
         </div>
@@ -77,7 +89,12 @@ export async function SiteHeader({
 
       {/* Main bar — white, so the two-colour logo is used exactly as supplied. */}
       <div className="container-page flex h-16 items-center gap-3">
-        <MobileNav categories={navCategories} phone={primary.phone} signedIn={Boolean(session)} />
+        <MobileNav
+          categories={navCategories}
+          phone={primary.phone}
+          phone2={primary.phone2}
+          signedIn={Boolean(session)}
+        />
 
         <Link
           href="/"

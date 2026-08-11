@@ -197,6 +197,18 @@ export default async function ProductPage({ params }: PageProps<"/[locale]/p/[sl
                   thing is a coin toss rather than a choice. */}
               <span className="text-data">{primary.phone}</span>
             </a>
+            {/* A second call button is not the coin toss the label would have
+                been: the two read differently because they are different
+                numbers, and either one reaches the branch. */}
+            {primary.phone2 ? (
+              <a
+                href={`tel:${primary.phone2.replace(/\s/g, "")}`}
+                className="hover:bg-secondary focus-visible:ring-ring inline-flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <Phone aria-hidden className="size-4" />
+                <span className="text-data">{primary.phone2}</span>
+              </a>
+            ) : null}
             <SaveProductButton
               productId={product.id}
               initiallySaved={savedIds.has(product.id)}

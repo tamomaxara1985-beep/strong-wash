@@ -31,10 +31,12 @@ export type NavCategory = {
 export function MobileNav({
   categories,
   phone,
+  phone2,
   signedIn = false,
 }: {
   categories: NavCategory[];
   phone: string;
+  phone2?: string;
   signedIn?: boolean;
 }) {
   const t = useTranslations();
@@ -143,14 +145,28 @@ export function MobileNav({
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t pt-4">
-            <a
-              href={`tel:${phone.replace(/\s/g, "")}`}
-              className="inline-flex items-center gap-2 text-sm font-semibold"
-            >
-              <Phone aria-hidden className="size-4" />
-              {phone}
-            </a>
+          {/* The switcher stays level with the first number rather than centred
+              on the pair, so a branch with two numbers does not shift a control
+              that sits in the same place on every other page. */}
+          <div className="flex items-start justify-between border-t pt-4">
+            <div className="flex flex-col gap-1.5">
+              <a
+                href={`tel:${phone.replace(/\s/g, "")}`}
+                className="inline-flex items-center gap-2 text-sm font-semibold"
+              >
+                <Phone aria-hidden className="size-4" />
+                {phone}
+              </a>
+              {phone2 ? (
+                <a
+                  href={`tel:${phone2.replace(/\s/g, "")}`}
+                  className="inline-flex items-center gap-2 text-sm font-semibold"
+                >
+                  <Phone aria-hidden className="size-4" />
+                  {phone2}
+                </a>
+              ) : null}
+            </div>
             <LocaleSwitcher />
           </div>
         </div>

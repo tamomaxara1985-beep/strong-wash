@@ -34,9 +34,9 @@ function messageFor(code: string): string {
 /**
  * One form for creating and editing a branch.
  *
- * Name, address and hours are per-language. Neither phone is: a telephone number
- * is not translated. The first is the primary, shown across the site; the second
- * is optional and appears on the locations page only.
+ * Name, address and hours are per-language. Neither phone is, because a telephone
+ * number is not translated. The first is the primary and the second optional; both
+ * are shown wherever the site lists a branch's contact details.
  */
 export function LocationForm({ location }: { location?: AdminLocationRow }) {
   const router = useRouter();
@@ -182,7 +182,7 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
             <p className="text-destructive text-xs">{fieldError("phone")}</p>
           ) : (
             <p className="text-muted-foreground text-xs">
-              Primary — the number the header and product pages show.
+              Primary — the number the header and product pages lead with.
             </p>
           )}
         </div>
@@ -201,7 +201,9 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
           ) : duplicateWarning ? (
             <p className="text-destructive text-xs">{duplicateWarning}</p>
           ) : (
-            <p className="text-muted-foreground text-xs">Shown on the locations page only.</p>
+            <p className="text-muted-foreground text-xs">
+              Shown alongside the primary, everywhere this branch appears.
+            </p>
           )}
         </div>
 
