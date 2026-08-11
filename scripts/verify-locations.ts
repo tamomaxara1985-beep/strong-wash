@@ -85,14 +85,38 @@ async function main() {
     check("an inactive branch is absent", !list.some((l) => l.name.ka.endsWith("hidden")));
 
     const primary = await (await import("../lib/queries/locations")).getPrimaryLocation();
-    check("the primary is the first by order", primary.name.ka.endsWith("first"));
+    if (realRows === 0) {
+      // Nothing but marker rows is stored, so the fixture at the lowest order IS
+      // the primary — the strongest form of the assertion, kept for that case.
+      check("the primary is the first by order", primary.name.ka.endsWith("first"));
+    } else {
+      // Real branches exist and legitimately outrank the fixtures, so no fixture
+      // can be primary here and asserting one is would fail for the wrong
+      // reason. Assert what the query actually guarantees instead: the primary
+      // is active, and no active branch sorts before it.
+      const firstActive = await StoreLocation.find({ isActive: true })
+        .sort({ order: 1 })
+        .limit(1)
+        .lean();
+      const minOrder = firstActive[0]?.order ?? 0;
+      check(
+        "the primary is the first active branch by order",
+        primary.isActive && primary.order === minOrder,
+      );
+    }
 
     await StoreLocation.updateOne(
       { "name.ka": `${MARKER} second` },
       { $set: { order: 1 } },
     );
-    const reordered = await (await import("../lib/queries/locations")).getPrimaryLocation();
-    check("reordering changes which is primary", reordered.name.ka.endsWith("second"));
+    // Scoped to the marker rows for the same reason: with real branches stored,
+    // `getPrimaryLocation()` keeps returning one of those, so the observable
+    // effect of reordering is which fixture comes first within the list.
+    const afterReorder = (await stored()).filter((l) => l.name.ka.includes(MARKER));
+    check(
+      "reordering changes which marker branch comes first",
+      afterReorder[0]?.name.ka.endsWith("second") === true,
+    );
 
     check("an unset en stays unset, for pickLocale to resolve", list[0]?.name.en === undefined);
 
