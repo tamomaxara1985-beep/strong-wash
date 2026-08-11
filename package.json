@@ -12,7 +12,8 @@
     "verify:brands": "tsx scripts/verify-brands.ts",
     "verify:settings": "tsx scripts/verify-settings.ts",
     "verify:slides": "tsx scripts/verify-slides.ts",
-    "verify:locations": "tsx scripts/verify-locations.ts"
+    "verify:locations": "tsx scripts/verify-locations.ts",
+    "verify:contact": "tsx scripts/verify-contact.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

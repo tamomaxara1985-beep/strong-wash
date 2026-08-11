@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { connectToDatabase } from "../db";
 import { Brand } from "../models/brand";
 import { Category } from "../models/category";
+import { ContactMessage } from "../models/contact-message";
 import { HeroSlide } from "../models/hero-slide";
 import { MediaAsset } from "../models/media-asset";
 import { Product } from "../models/product";
@@ -17,6 +18,8 @@ export type AdminCounts = {
   admins: number;
   quotes: number;
   newQuotes: number;
+  messages: number;
+  newMessages: number;
   media: number;
   mediaBytes: number;
   attachments: number;
@@ -26,12 +29,14 @@ export type AdminCounts = {
 export async function getAdminCounts(): Promise<AdminCounts> {
   await connectToDatabase();
 
-  const [users, admins, quotes, newQuotes, media, products, mediaSize, attachmentCount] =
+  const [users, admins, quotes, newQuotes, messages, newMessages, media, products, mediaSize, attachmentCount] =
     await Promise.all([
       User.countDocuments({}),
       User.countDocuments({ role: "admin" }),
       QuoteRequest.countDocuments({}),
       QuoteRequest.countDocuments({ status: "new" }),
+      ContactMessage.countDocuments({}),
+      ContactMessage.countDocuments({ status: "new" }),
       MediaAsset.countDocuments({}),
       Product.countDocuments({ isActive: true }),
       MediaAsset.aggregate<{ total: number }>([
@@ -50,6 +55,8 @@ export async function getAdminCounts(): Promise<AdminCounts> {
     admins,
     quotes,
     newQuotes,
+    messages,
+    newMessages,
     media,
     mediaBytes: mediaSize[0]?.total ?? 0,
     attachments: attachmentCount[0]?.n ?? 0,
@@ -679,4 +686,67 @@ export async function listAttachments(): Promise<AttachmentRow[]> {
       },
     })),
   );
+}
+
+export type AdminMessageRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  locale: string;
+  status: "new" | "handled";
+  createdAt: string;
+};
+
+/**
+ * Every message, unread first and newest first within each group.
+ *
+ * Ordered that way rather than purely by date because the reason to open this
+ * screen is to see what has not been answered; a handled message from this
+ * morning is not more urgent than an unread one from yesterday.
+ *
+ * The grouping is applied here rather than in the query because Mongo can only
+ * sort the status alphabetically, which puts "handled" before "new" — the exact
+ * opposite of what this screen is for. `Array.prototype.sort` is stable, so the
+ * `createdAt` order the query established survives inside each group.
+ */
+export async function listAdminMessages(): Promise<AdminMessageRow[]> {
+  await connectToDatabase();
+  const docs = await ContactMessage.find({}).sort({ createdAt: -1 }).limit(200).lean();
+
+  const rows: AdminMessageRow[] = docs.map((doc) => ({
+    id: String(doc._id),
+    name: doc.name,
+    email: doc.email,
+    phone: doc.phone?.trim() || undefined,
+    subject: doc.subject,
+    message: doc.message,
+    locale: doc.locale,
+    status: (doc.status ?? "new") as AdminMessageRow["status"],
+    createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
+  }));
+
+  return rows.sort((a, b) => Number(a.status === "handled") - Number(b.status === "handled"));
+}
+
+export async function getAdminMessage(id: string): Promise<AdminMessageRow | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  await connectToDatabase();
+
+  const doc = await ContactMessage.findById(id).lean();
+  if (!doc) return null;
+
+  return {
+    id: String(doc._id),
+    name: doc.name,
+    email: doc.email,
+    phone: doc.phone?.trim() || undefined,
+    subject: doc.subject,
+    message: doc.message,
+    locale: doc.locale,
+    status: (doc.status ?? "new") as AdminMessageRow["status"],
+    createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
+  };
 }

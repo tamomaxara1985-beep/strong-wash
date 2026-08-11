@@ -74,6 +74,22 @@ export const quoteRequestSchema = z.object({
 });
 
 /**
+ * The contact form. Only `phone` is optional — a reply needs a name, an address
+ * to send to, and something to reply about.
+ *
+ * The codes are the three the form renders: `required`, `email`, `too_long`. The
+ * honeypot is deliberately absent — it is read from the raw body in the route,
+ * because Zod strips keys the schema does not declare.
+ */
+export const contactMessageSchema = z.object({
+  name: z.string().trim().min(2, "required").max(120, "too_long"),
+  email: z.string().trim().toLowerCase().min(3, "required").max(254, "too_long").email("email"),
+  phone: z.string().trim().max(40, "too_long").optional().or(z.literal("")),
+  subject: z.string().trim().min(2, "required").max(160, "too_long"),
+  message: z.string().trim().min(2, "required").max(4000, "too_long"),
+});
+
+/**
  * A `{ka, en, ru}` field. Georgian is required everywhere the storefront falls
  * back to it, which is everywhere — `pickLocale` reads `ka` when a translation is
  * missing, so an empty `ka` would render as blank rather than as English.
