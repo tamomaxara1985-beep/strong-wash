@@ -54,7 +54,14 @@ export default async function AdminLocationsPage() {
                     <span className="text-muted-foreground ml-2 text-xs">primary</span>
                   ) : null}
                 </td>
-                <td className="text-data px-3 py-2">{location.phone}</td>
+                <td className="px-3 py-2">
+                  <div className="text-data">{location.phone}</div>
+                  {location.phone2 ? (
+                    <div className="text-data text-muted-foreground text-xs">
+                      {location.phone2}
+                    </div>
+                  ) : null}
+                </td>
                 <td className="max-w-72 px-3 py-2">{location.address.ka}</td>
                 <td className="text-data px-3 py-2 text-right">{location.order}</td>
                 <td className="px-3 py-2">

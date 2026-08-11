@@ -57,6 +57,16 @@ export default async function LocationsPage({ params }: PageProps<"/[locale]/loc
               {location.phone}
             </a>
 
+            {location.phone2 ? (
+              <a
+                href={`tel:${location.phone2.replace(/\s/g, "")}`}
+                className="text-data hover:text-primary inline-flex items-center gap-2 text-sm font-semibold transition-colors"
+              >
+                <Phone aria-hidden className="size-4 shrink-0" />
+                {location.phone2}
+              </a>
+            ) : null}
+
             {location.email ? (
               <a
                 href={`mailto:${location.email}`}

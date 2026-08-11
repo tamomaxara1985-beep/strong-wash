@@ -22,6 +22,10 @@ function messageFor(code: string): string {
       return `Google Maps links only — ${MAP_HOSTS.join(", ")}.`;
     case "last_active_location":
       return "This is the only branch currently shown on the site. Activate another branch first, then this one can be unticked.";
+    case "phone_too_short":
+      return "A number needs at least 3 characters, or leave it empty.";
+    case "same_as_phone":
+      return "Same as the primary number. Leave it empty instead.";
     default:
       return "Invalid.";
   }
@@ -30,8 +34,9 @@ function messageFor(code: string): string {
 /**
  * One form for creating and editing a branch.
  *
- * Name, address and hours are per-language; the phone is not, because a telephone
- * number is not translated.
+ * Name, address and hours are per-language. Neither phone is: a telephone number
+ * is not translated. The first is the primary, shown across the site; the second
+ * is optional and appears on the locations page only.
  */
 export function LocationForm({ location }: { location?: AdminLocationRow }) {
   const router = useRouter();
@@ -47,6 +52,7 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
       ru: location?.name.ru ?? "",
     } as Record<Locale, string>,
     phone: location?.phone ?? "",
+    phone2: location?.phone2 ?? "",
     email: location?.email ?? "",
     address: {
       ka: location?.address.ka ?? "",
@@ -83,6 +89,7 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
     const payload = {
       name: trilingual(draft.name),
       phone: draft.phone,
+      phone2: draft.phone2,
       email: draft.email,
       address: trilingual(draft.address),
       workHours: trilingual(draft.workHours),
@@ -167,7 +174,25 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
           {fieldError("phone") ? (
             <p className="text-destructive text-xs">{fieldError("phone")}</p>
           ) : (
-            <p className="text-muted-foreground text-xs">Not translated — one number.</p>
+            <p className="text-muted-foreground text-xs">
+              Primary — the number the header and product pages show.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="phone2">Second phone (optional)</Label>
+          <Input
+            id="phone2"
+            value={draft.phone2}
+            onChange={(event) => setDraft({ ...draft, phone2: event.target.value })}
+            aria-invalid={Boolean(fieldError("phone2"))}
+            className="text-data h-10"
+          />
+          {fieldError("phone2") ? (
+            <p className="text-destructive text-xs">{fieldError("phone2")}</p>
+          ) : (
+            <p className="text-muted-foreground text-xs">Shown on the locations page only.</p>
           )}
         </div>
 
@@ -184,6 +209,22 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
           {fieldError("email") ? (
             <p className="text-destructive text-xs">{fieldError("email")}</p>
           ) : null}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="order">Sort order</Label>
+          <Input
+            id="order"
+            type="number"
+            min={0}
+            max={9999}
+            value={draft.order}
+            onChange={(event) => setDraft({ ...draft, order: event.target.value })}
+            className="h-10"
+          />
+          <p className="text-muted-foreground text-xs">
+            Lower comes first. The first branch is the one the header shows.
+          </p>
         </div>
 
         <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -205,22 +246,6 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
               Shown as a &ldquo;Directions&rdquo; link. Google Maps only.
             </p>
           )}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="order">Sort order</Label>
-          <Input
-            id="order"
-            type="number"
-            min={0}
-            max={9999}
-            value={draft.order}
-            onChange={(event) => setDraft({ ...draft, order: event.target.value })}
-            className="h-10"
-          />
-          <p className="text-muted-foreground text-xs">
-            Lower comes first. The first branch is the one the header shows.
-          </p>
         </div>
       </section>
 
