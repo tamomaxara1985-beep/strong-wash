@@ -58,6 +58,11 @@ export async function SiteFooter({
             <li>{t("footer.warranty")}</li>
             <li>{t("footer.returns")}</li>
             <li>{t("footer.faq")}</li>
+            <li>
+              <Link href="/contact" className="hover:text-white transition-colors">
+                {t("nav.contact")}
+              </Link>
+            </li>
           </ul>
         </nav>
 

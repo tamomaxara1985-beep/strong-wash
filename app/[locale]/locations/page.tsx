@@ -2,6 +2,7 @@ import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Metadata } from "next";
 
+import { Link } from "@/i18n/navigation";
 import { mapLink } from "@/lib/locations/map-link";
 import { pickLocale } from "@/lib/localized";
 import { getLocations } from "@/lib/queries/locations";
@@ -114,6 +115,12 @@ export default async function LocationsPage({ params }: PageProps<"/[locale]/loc
           );
         })}
       </ul>
+
+      <p className="text-muted-foreground mt-8 text-sm">
+        <Link href="/contact" className="hover:text-primary font-semibold transition-colors">
+          {t("nav.contact")} →
+        </Link>
+      </p>
     </div>
   );
 }

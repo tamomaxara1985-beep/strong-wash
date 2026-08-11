@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Menu, Phone, UserRound } from "lucide-react";
+import { ChevronRight, Mail, Menu, Phone, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -111,6 +111,20 @@ export function MobileNav({
               ),
             )}
           </Accordion>
+
+          {/* The utility bar carries this link on desktop, and that bar is
+              hidden below lg — so without this the page is unreachable from a
+              phone except through the footer. */}
+          <div className="flex flex-col gap-1 border-t pt-4">
+            <Link
+              href="/contact"
+              onClick={close}
+              className="hover:bg-secondary flex items-center gap-2 rounded-sm px-2 py-2 text-sm font-semibold"
+            >
+              <Mail aria-hidden className="size-4" />
+              {t("nav.contact")}
+            </Link>
+          </div>
 
           {/* The desktop bar's account controls have no room on mobile, so the
               sheet carries them. */}

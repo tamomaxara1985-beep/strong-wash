@@ -1,4 +1,4 @@
-import { FileImage, Package, Paperclip, ShieldCheck, Users } from "lucide-react";
+import { FileImage, Mail, Package, Paperclip, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 
 import { getAdminCounts } from "@/lib/queries/admin";
@@ -8,6 +8,13 @@ export default async function AdminDashboard() {
   const counts = await getAdminCounts();
 
   const tiles = [
+    {
+      label: "Messages",
+      value: String(counts.messages),
+      hint: `${counts.newMessages} unread`,
+      href: "/admin/messages",
+      icon: Mail,
+    },
     {
       label: "Accounts",
       value: String(counts.users),

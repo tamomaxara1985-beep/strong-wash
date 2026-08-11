@@ -1,4 +1,4 @@
-import { Heart, MapPin, Phone, UserRound } from "lucide-react";
+import { Heart, Mail, MapPin, Phone, UserRound } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { BrandLogo } from "@/components/layout/brand-logo";
@@ -62,6 +62,13 @@ export async function SiteHeader({
             >
               <MapPin aria-hidden className="size-3.5" />
               {t("nav.stores")}
+            </Link>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-1.5 text-white/80 transition-colors hover:text-white"
+            >
+              <Mail aria-hidden className="size-3.5" />
+              {t("nav.contact")}
             </Link>
             <a
               href={`tel:${primary.phone.replace(/\s/g, "")}`}
