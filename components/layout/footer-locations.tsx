@@ -2,6 +2,7 @@ import { MapPin, Phone } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { mapLink } from "@/lib/locations/map-link";
 import { pickLocale } from "@/lib/localized";
 import type { Locale, StoreLocation } from "@/lib/types";
 
@@ -27,7 +28,11 @@ export async function FooterLocations({
 
   return (
     <ul className="mt-3 flex flex-col gap-4 text-sm">
-      {shown.map((location) => (
+      {shown.map((location) => {
+        const address = pickLocale(location.address, locale);
+        const mapHref = mapLink(address, location.mapUrl);
+
+        return (
         <li key={location.id} className="flex flex-col gap-1.5">
           {locations.length > 1 ? (
             <span className="text-white font-semibold">{pickLocale(location.name, locale)}</span>
@@ -39,12 +44,27 @@ export async function FooterLocations({
             <Phone aria-hidden className="size-4 shrink-0" />
             {location.phone}
           </a>
-          <span className="inline-flex items-start gap-2">
-            <MapPin aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {pickLocale(location.address, locale)}
-          </span>
+          {/* Clickable for the same reason it is on /locations: the address is
+              what a visitor reaches for when they want the map. */}
+          {mapHref ? (
+            <a
+              href={mapHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white inline-flex items-start gap-2 transition-colors"
+            >
+              <MapPin aria-hidden className="mt-0.5 size-4 shrink-0" />
+              {address}
+            </a>
+          ) : (
+            <span className="inline-flex items-start gap-2">
+              <MapPin aria-hidden className="mt-0.5 size-4 shrink-0" />
+              {address}
+            </span>
+          )}
         </li>
-      ))}
+        );
+      })}
 
       {hasMore ? (
         <li>

@@ -143,6 +143,32 @@ async function main() {
       check(`the map rule refuses ${JSON.stringify(bad)}`, !isMapUrl(bad));
     }
 
+    const { mapLink } = await import("../lib/locations/map-link");
+
+    check(
+      "a saved map link wins over the address search",
+      mapLink("თბილისი, ქ. წერეთლის გამზ. 116", "https://maps.app.goo.gl/abc") ===
+        "https://maps.app.goo.gl/abc",
+    );
+    check(
+      "with no saved link the address becomes a Google Maps search",
+      mapLink("თბილისი, ქ. წერეთლის გამზ. 116") ===
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          "თბილისი, ქ. წერეთლის გამზ. 116",
+        )}`,
+    );
+    // The invariant that keeps the two paths honest: the address fallback must
+    // itself satisfy the allowlist stored links are held to, or the site would
+    // send visitors to a host it refuses to save.
+    check(
+      "the address search URL passes the map-host rule",
+      isMapUrl(mapLink("თბილისი, ქ. წერეთლის გამზ. 116") ?? ""),
+    );
+    check(
+      "a branch with neither a link nor an address gets no map link at all",
+      mapLink("   ") === undefined,
+    );
+
     const { isSamePhone } = await import("../lib/locations/validate");
 
     check("isSamePhone ignores spacing", isSamePhone("+995 322 40 40 40", "+995322404040"));
