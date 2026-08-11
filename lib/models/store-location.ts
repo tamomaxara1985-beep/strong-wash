@@ -20,7 +20,6 @@ const storeLocationSchema = new Schema(
   {
     name: { type: localizedStringSchema, required: true },
     phone: { type: String, required: true, trim: true },
-    /** Optional second line for the same branch. Shown on /locations only. */
     phone2: { type: String, trim: true },
     email: { type: String, trim: true, lowercase: true },
     address: { type: localizedStringSchema, required: true },

@@ -249,9 +249,7 @@ export const slideSchema = z.object({
 export const locationSchema = z.object({
   name: localizedRequired,
   phone: z.string().trim().min(3, "required").max(40),
-  // Optional: an empty box means "this branch has one number". `min(3)` still
-  // applies to a non-empty value, so a half-typed "+9" is refused rather than
-  // stored.
+  // Optional: an empty box means "this branch has one number".
   phone2: z.string().trim().min(3, "phone_too_short").max(40).optional().or(z.literal("")),
   email: z.string().trim().toLowerCase().max(254).email().optional().or(z.literal("")),
   address: localizedRequired,

@@ -108,11 +108,12 @@ type LeanStoreLocation = {
 
 export function toStoreLocation(doc: LeanStoreLocation): StoreLocation {
   const mapUrl = doc.mapUrl?.trim();
+  const phone = doc.phone?.trim() || DEFAULT_LOCATION.phone;
   const phone2 = doc.phone2?.trim();
   return {
     id: idToString(doc._id),
     name: localized(doc.name),
-    phone: doc.phone?.trim() || DEFAULT_LOCATION.phone,
+    phone,
     // No DEFAULT_LOCATION fallback here: `phone` has one because a page with no
     // telephone number is worse than one with a stale number, whereas an absent
     // second number is simply the normal case.
@@ -121,10 +122,7 @@ export function toStoreLocation(doc: LeanStoreLocation): StoreLocation {
     // that, but they cannot vouch for a document they did not write — a legacy
     // row, an imported dump or a restored backup can carry anything, and the
     // failure mode is a visibly doubled line on a public page.
-    phone2:
-      phone2 && !isSamePhone(doc.phone?.trim() || DEFAULT_LOCATION.phone, phone2)
-        ? phone2
-        : undefined,
+    phone2: phone2 && !isSamePhone(phone, phone2) ? phone2 : undefined,
     email: doc.email?.trim() || undefined,
     address: localized(doc.address),
     workHours: localized(doc.workHours),

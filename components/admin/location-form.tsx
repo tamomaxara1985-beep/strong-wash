@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MAP_HOSTS, isMapUrl } from "@/lib/locations/validate";
+import { MAP_HOSTS, isMapUrl, isSamePhone } from "@/lib/locations/validate";
 import type { AdminLocationRow } from "@/lib/queries/admin";
 import { cn } from "@/lib/utils";
 
@@ -149,6 +149,13 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
       ? `That is not a Google Maps link. Allowed: ${MAP_HOSTS.join(", ")}.`
       : null;
 
+  // Mirrors the server rule so the operator is told before a round trip; the
+  // handlers enforce it regardless.
+  const duplicateWarning =
+    draft.phone && draft.phone2 && isSamePhone(draft.phone, draft.phone2)
+      ? "Same as the primary number. Leave it empty instead."
+      : null;
+
   return (
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
       {error ? (
@@ -191,6 +198,8 @@ export function LocationForm({ location }: { location?: AdminLocationRow }) {
           />
           {fieldError("phone2") ? (
             <p className="text-destructive text-xs">{fieldError("phone2")}</p>
+          ) : duplicateWarning ? (
+            <p className="text-destructive text-xs">{duplicateWarning}</p>
           ) : (
             <p className="text-muted-foreground text-xs">Shown on the locations page only.</p>
           )}

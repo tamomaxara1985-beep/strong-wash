@@ -58,6 +58,7 @@ export default async function AdminLocationsPage() {
                   <div className="text-data">{location.phone}</div>
                   {location.phone2 ? (
                     <div className="text-data text-muted-foreground text-xs">
+                      <span className="sr-only">Second number: </span>
                       {location.phone2}
                     </div>
                   ) : null}
