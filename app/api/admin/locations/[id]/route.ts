@@ -6,7 +6,7 @@ import { apiError, notFoundJson, validationError } from "@/lib/api";
 import { assertSameOrigin, requireAdmin } from "@/lib/auth/guard";
 import { fieldErrors, locationSchema } from "@/lib/auth/schemas";
 import { connectToDatabase } from "@/lib/db";
-import { isMapUrl } from "@/lib/locations/validate";
+import { isMapUrl, isSamePhone } from "@/lib/locations/validate";
 import { StoreLocation } from "@/lib/models/store-location";
 
 /** Updates a branch. */
@@ -29,6 +29,13 @@ export async function PATCH(
 
     const mapUrl = parsed.data.mapUrl?.trim();
     if (mapUrl && !isMapUrl(mapUrl)) return validationError({ mapUrl: "map_host" });
+
+    // The same number on both lines renders twice on the branch card, which
+    // reads as a bug. What the operator wants is an empty box.
+    const phone2 = parsed.data.phone2?.trim();
+    if (phone2 && isSamePhone(parsed.data.phone, phone2)) {
+      return validationError({ phone2: "same_as_phone" });
+    }
 
     await connectToDatabase();
     const location = await StoreLocation.findById(id);
@@ -56,6 +63,9 @@ export async function PATCH(
 
     location.name = parsed.data.name;
     location.phone = parsed.data.phone;
+    // `undefined` unsets the path on save, which is how emptying the box removes
+    // the second number — the same pattern `email` and `mapUrl` use below.
+    location.phone2 = phone2 || undefined;
     location.email = parsed.data.email || undefined;
     location.address = parsed.data.address;
     location.workHours = parsed.data.workHours;

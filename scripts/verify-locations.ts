@@ -155,6 +155,41 @@ async function main() {
       !isSamePhone("+995 322 40 40 40", ""),
     );
 
+    const { locationSchema } = await import("../lib/auth/schemas");
+
+    const submission = (phone2: unknown) => ({
+      name: { ka: "ფილიალი" },
+      phone: "+995 322 40 40 40",
+      phone2,
+      address: { ka: "მისამართი" },
+      workHours: { ka: "ორშ–შაბ 10:00–18:00" },
+      order: 0,
+      isActive: true,
+    });
+
+    check(
+      "the schema accepts a second number",
+      locationSchema.safeParse(submission("+995 599 11 22 33")).success,
+    );
+    check(
+      "the schema accepts an empty second number — the box the operator left blank",
+      locationSchema.safeParse(submission("")).success,
+    );
+    check(
+      "the schema accepts an absent second number",
+      locationSchema.safeParse(submission(undefined)).success,
+    );
+
+    const tooShort = locationSchema.safeParse(submission("+9"));
+    check("the schema refuses a half-typed second number", !tooShort.success);
+    check(
+      "and reports it as phone_too_short, the code the form explains",
+      tooShort.success === false &&
+        tooShort.error.issues.some(
+          (issue) => issue.path.join(".") === "phone2" && issue.message === "phone_too_short",
+        ),
+    );
+
     // A second number is optional, so all three states have to be checked: set,
     // absent, and set to the same number as the primary — which the mapper
     // drops, because a card showing one number twice reads as a bug.

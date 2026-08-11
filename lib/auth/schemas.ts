@@ -239,15 +239,20 @@ export const slideSchema = z.object({
 
 /**
  * `name`, `address` and `workHours` are `localizedRequired`: a branch a visitor
- * cannot name or find is not worth listing. `phone` is one string, as a telephone
- * number is not translated.
+ * cannot name or find is not worth listing. `phone` is one required string and
+ * `phone2` one optional string, as a telephone number is not translated.
  *
- * The map-host rule is enforced in the route handler rather than here, so it can
- * report a field code the form explains.
+ * The map-host rule and the "the second number repeats the first" rule are both
+ * enforced in the route handlers rather than here, so each can report a field
+ * code the form explains.
  */
 export const locationSchema = z.object({
   name: localizedRequired,
   phone: z.string().trim().min(3, "required").max(40),
+  // Optional: an empty box means "this branch has one number". `min(3)` still
+  // applies to a non-empty value, so a half-typed "+9" is refused rather than
+  // stored.
+  phone2: z.string().trim().min(3, "phone_too_short").max(40).optional().or(z.literal("")),
   email: z.string().trim().toLowerCase().max(254).email().optional().or(z.literal("")),
   address: localizedRequired,
   workHours: localizedRequired,
