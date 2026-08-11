@@ -739,14 +739,18 @@ function toMessageRow(doc: LeanContactMessage): AdminMessageRow {
  * hide unread mail: with a single `limit(200)` an unanswered message older
  * than the newest 200 becomes unreachable, and this list is the only route to
  * the detail page. This is also the one collection an anonymous visitor can
- * grow, so the cap is load-bearing rather than theoretical.
+ * grow, so the cap is load-bearing rather than theoretical. The split is
+ * `$ne: "handled"` rather than `status: "new"` so it agrees with `toMessageRow`'s
+ * normalisation: an unrecognised status must be treated as unanswered, because a
+ * message wrongly badged handled is silently lost mail, whereas one wrongly
+ * badged unread costs an operator a single redundant open.
  */
 export async function listAdminMessages(): Promise<AdminMessageRow[]> {
   await connectToDatabase();
 
   const [unread, handled] = await Promise.all([
-    ContactMessage.find({ status: "new" }).sort({ createdAt: -1 }).limit(200).lean(),
-    ContactMessage.find({ status: { $ne: "new" } }).sort({ createdAt: -1 }).limit(200).lean(),
+    ContactMessage.find({ status: { $ne: "handled" } }).sort({ createdAt: -1 }).limit(200).lean(),
+    ContactMessage.find({ status: "handled" }).sort({ createdAt: -1 }).limit(200).lean(),
   ]);
 
   return [...unread, ...handled].map(toMessageRow);

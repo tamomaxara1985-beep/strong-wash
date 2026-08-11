@@ -2,7 +2,7 @@
 
 import { MailOpen, RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +24,17 @@ export function MessageActions({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // `router.refresh()` re-renders the server tree but preserves this client
+  // component's state, so nothing here is remounted and `pending` would stay
+  // true forever. Clearing it when the refreshed `status` prop arrives keeps the
+  // buttons disabled for exactly as long as the change is in flight.
+  useEffect(() => {
+    // Resetting an in-flight flag once the awaited prop arrives, not deriving
+    // render state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPending(false);
+  }, [status]);
 
   async function setStatus(next: "new" | "handled") {
     setPending(true);
