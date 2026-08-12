@@ -15,7 +15,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { AdminSignOut } from "@/components/admin/admin-sign-out";
+import { Badge } from "@/components/ui/badge";
 import { requireAdminPage } from "@/lib/auth/guard";
+import { countUnreadMessages } from "@/lib/queries/admin";
 
 import "../globals.css";
 
@@ -32,9 +34,11 @@ export const metadata: Metadata = {
  * This is its own `<html>` document rather than nesting under the storefront
  * layout: the panel needs neither the locale provider nor the site chrome.
  */
+const MESSAGES_HREF = "/admin/messages";
+
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/messages", label: "Messages", icon: Mail },
+  { href: MESSAGES_HREF, label: "Messages", icon: Mail },
   { href: "/admin/slides", label: "Homepage banners", icon: GalleryHorizontal },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/brands", label: "Brands", icon: Factory },
@@ -50,6 +54,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // The gate: redirects when signed out, 404s for a signed-in non-admin, and
   // reads the role from the database rather than the cookie's claim.
   const admin = await requireAdminPage();
+
+  // After the gate, never in parallel with it: this is a count of visitor-submitted
+  // mail, so it must not be queried until the request is known to be an admin's.
+  //
+  // Shared layouts are not re-rendered on client-side navigation between admin
+  // pages, so the badge is as fresh as the last full server render — a hard
+  // reload, or the `router.refresh()` that `message-actions` already fires after
+  // marking a message handled. New mail arriving mid-session shows on the next
+  // one; nothing here polls.
+  const unread = await countUnreadMessages();
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -83,6 +97,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                     >
                       <item.icon aria-hidden className="size-4 shrink-0" />
                       {item.label}
+                      {item.href === MESSAGES_HREF && unread > 0 ? (
+                        <Badge
+                          // Labelled rather than left as a bare number: read on its
+                          // own by a screen reader, "3" next to "Messages" is
+                          // meaningless.
+                          aria-label={`${unread} unread`}
+                          className="bg-brand-yellow text-brand-black ml-auto px-1.5 tabular-nums"
+                        >
+                          {unread > 99 ? "99+" : unread}
+                        </Badge>
+                      ) : null}
                     </Link>
                   </li>
                 ))}

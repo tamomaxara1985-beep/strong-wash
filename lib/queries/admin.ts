@@ -756,6 +756,23 @@ export async function listAdminMessages(): Promise<AdminMessageRow[]> {
   return [...unread, ...handled].map(toMessageRow);
 }
 
+/**
+ * How many messages are still unanswered, for the sidebar badge.
+ *
+ * `$ne: "handled"` rather than `status: "new"` so the badge agrees with
+ * `listAdminMessages` and `toMessageRow`: a row with an unrecognised status is
+ * shown as unread in the list, and a badge that disagreed would send the
+ * operator looking for mail the count says is not there.
+ *
+ * A count rather than reusing `listAdminMessages`, because the layout renders on
+ * every admin page and must not pull 400 documents to display one number.
+ */
+export async function countUnreadMessages(): Promise<number> {
+  await connectToDatabase();
+
+  return ContactMessage.countDocuments({ status: { $ne: "handled" } });
+}
+
 export async function getAdminMessage(id: string): Promise<AdminMessageRow | null> {
   if (!Types.ObjectId.isValid(id)) return null;
   await connectToDatabase();
